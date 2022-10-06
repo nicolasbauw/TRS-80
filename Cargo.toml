@@ -7,3 +7,5 @@ edition = "2021"
 
 [dependencies]
 sdl2 = "0.35.2"
+sdl2-unifont = { git = "https://github.com/carlalbrecht/sdl2-unifont" }
+zilog_z80 = { path = "../ZilogZ80" }

@@ -1,6 +1,8 @@
 use sdl2::{pixels::Color,event::Event,keyboard::Keycode};
+use zilog_z80::cpu::CPU;
 use std::error::Error;
-mod square;
+mod display;
+use display::display;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let sdl_context = sdl2::init()?;
@@ -11,8 +13,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         .build()?;
  
     let mut canvas = window.into_canvas()
-    .present_vsync()
+    //.present_vsync()
     .build()?;
+
+    let mut c = CPU::new();
+    c.bus.load_bin("bin/trs80m13diag.bin", 0).unwrap();
 
     let mut event_pump = sdl_context.event_pump()?;
     'running: loop {
@@ -28,7 +33,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         }
         // The rest of the game loop goes here...
-        square::do_square(&mut canvas)?;
+        c.execute_slice();
+        display(&mut canvas, c.bus.read_mem_slice(0x3c00, 0x3fff));
         canvas.present();
     }
     Ok(())
