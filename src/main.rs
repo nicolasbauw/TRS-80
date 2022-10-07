@@ -19,6 +19,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     c.bus.load_bin("bin/trs80m13diag.bin", 0).unwrap();
     let mem_receiver1 = c.bus.rw.1.clone();
 
+    // CPU lives its life on his own thread
     thread::spawn(move || {
         loop {
             c.execute_slice();
