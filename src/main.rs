@@ -1,6 +1,6 @@
 use sdl2::{pixels::Color,event::Event,keyboard::Keycode};
 use zilog_z80::cpu::CPU;
-use std::error::Error;
+use std::{error::Error, thread};
 mod display;
 use display::display;
 
@@ -13,11 +13,18 @@ fn main() -> Result<(), Box<dyn Error>> {
         .build()?;
  
     let mut canvas = window.into_canvas()
-    //.present_vsync()
-    .build()?;
+        .build()?;
 
     let mut c = CPU::new();
     c.bus.load_bin("bin/trs80m13diag.bin", 0).unwrap();
+    let mem_receiver1 = c.bus.rw.1.clone();
+
+    thread::spawn(move || {
+        loop {
+            c.execute_slice();
+            c.bus.channel_send(0x3C00, 0x3FFF);
+        }
+    });
 
     let mut event_pump = sdl_context.event_pump()?;
     'running: loop {
@@ -32,9 +39,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                 _ => {}
             }
         }
-        // The rest of the game loop goes here...
-        c.execute_slice();
-        display(&mut canvas, c.bus.read_mem_slice(0x3c00, 0x3fff));
+
+        // Received VRAM data from the CPU thread ?
+        let m: Vec<u8> = match mem_receiver1.recv() {
+            Ok((_, data)) => data,
+            Err(_) => Vec::new()
+        };
+        display(&mut canvas, m);
+
         canvas.present();
     }
     Ok(())
