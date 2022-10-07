@@ -18,13 +18,24 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut c = CPU::new();
     c.bus.load_bin("bin/trs80m13diag.bin", 0).unwrap();
+    c.debug.io = true;
     let mem_receiver1 = c.bus.rw.1.clone();
+    let io_receiver1 = c.io.1.clone();
 
     // CPU lives its life on his own thread
     thread::spawn(move || {
         loop {
             c.execute_slice();
             c.bus.channel_send(0x3C00, 0x3FFF);
+        }
+    });
+
+    // Dummy IO peripheral
+    thread::spawn(move || {
+        loop {
+            if let Ok((device, data)) = io_receiver1.recv() {
+                //if device == 0xFF { println!("Device 0xFF received {:04X}", data)}
+            }
         }
     });
 
@@ -43,11 +54,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         // Received VRAM data from the CPU thread ?
-        let m: Vec<u8> = match mem_receiver1.recv() {
-            Ok((_, data)) => data,
-            Err(_) => Vec::new()
+        if let Ok((_, data)) = mem_receiver1.recv() {
+            display(&mut canvas, data);
+            //println!("VRAM data received");
         };
-        display(&mut canvas, m);
 
         canvas.present();
     }
