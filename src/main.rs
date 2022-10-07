@@ -13,6 +13,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .build()?;
  
     let mut canvas = window.into_canvas()
+        .accelerated()
         .build()?;
 
     let mut c = CPU::new();
