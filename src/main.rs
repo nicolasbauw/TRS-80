@@ -20,31 +20,29 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut c = CPU::new();
     c.set_freq(1.77);
     c.bus.load_bin("bin/trs80m13diag.bin", 0).unwrap();
-    //c.debug.io = true;
     let mem_receiver1 = c.bus.rw.1.clone();
     let io_receiver1 = c.io.1.clone();
 
     // Dummy IO peripheral
-    /*thread::spawn(move || {
+    thread::spawn(move || {
         loop {
             if let Ok((device, data)) = io_receiver1.recv() {
-                //if device == 0xFF { println!("Device 0xFF received {:#04X}", data)}
+                if device == 0xFF { eprintln!("Device 0xFF received {:#04X}", data)}
             }
         }
-    });*/
+    });
 
     // CPU lives its life on his own thread
     thread::spawn(move || {
-        // Letting peripherals start on their own thread
+        // Letting time for peripherals to start on their own thread
         thread::sleep(Duration::from_millis(1000));
 
         loop {
             for _ in 0..50 {
                 c.execute_slice();
             }
-            match c.bus.channel_send(0x3C00, 0x3FFF) {
-                Ok(_) => (),
-                Err(_) => { /*println!("VRAM Send error") */}
+            if let Err(_) = c.bus.channel_send(0x3C00, 0x3FFF) {
+                eprintln!("VRAM Send error");
             }
         }
     });
@@ -66,7 +64,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         // Received VRAM data from the CPU thread ?
         if let Ok((_, data)) = mem_receiver1.recv() {
             display(&mut canvas, data);
-            //println!("VRAM data received");
         };
 
         canvas.present();
