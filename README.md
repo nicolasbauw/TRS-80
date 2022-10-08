@@ -1,3 +1,3 @@
-# Rust SDL2 project template
+# TRuSt-80
 
-This repository is a basic SDL2 / Rust template to easily start a new project.
+This is a demonstration / development TRS-80 emulator based on my [Z80 emulator](https://github.com/nicolasbauw/ZilogZ80).
