@@ -85,15 +85,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sdl2-rust-template"
-version = "0.1.0"
-dependencies = [
- "sdl2",
- "sdl2-unifont",
- "zilog_z80",
-]
-
-[[package]]
 name = "sdl2-sys"
 version = "0.35.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -122,6 +113,15 @@ checksum = "cafa7900db085f4354dbc7025e25d7a839a14360ea13b5fc4fd717f2d3b23134"
 dependencies = [
  "once_cell",
  "winapi",
+]
+
+[[package]]
+name = "trust-80"
+version = "0.1.0"
+dependencies = [
+ "sdl2",
+ "sdl2-unifont",
+ "zilog_z80",
 ]
 
 [[package]]
