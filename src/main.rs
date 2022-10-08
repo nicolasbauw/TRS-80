@@ -1,6 +1,6 @@
 use sdl2::{pixels::Color,event::Event,keyboard::Keycode};
 use zilog_z80::cpu::CPU;
-use std::{error::Error, thread};
+use std::{error::Error, thread, time::Duration};
 mod display;
 use display::display;
 
@@ -8,33 +8,43 @@ fn main() -> Result<(), Box<dyn Error>> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
  
-    let window = video_subsystem.window("rust sdl2 template", 800, 600)
+    let window = video_subsystem.window("TRuSt-80", 800, 600)
         .position_centered()
         .build()?;
  
     let mut canvas = window.into_canvas()
         .accelerated()
+        .present_vsync()
         .build()?;
 
     let mut c = CPU::new();
+    c.set_freq(1.77);
     c.bus.load_bin("bin/trs80m13diag.bin", 0).unwrap();
-    c.debug.io = true;
+    //c.debug.io = true;
     let mem_receiver1 = c.bus.rw.1.clone();
     let io_receiver1 = c.io.1.clone();
 
-    // CPU lives its life on his own thread
-    thread::spawn(move || {
-        loop {
-            c.execute_slice();
-            c.bus.channel_send(0x3C00, 0x3FFF);
-        }
-    });
-
     // Dummy IO peripheral
-    thread::spawn(move || {
+    /*thread::spawn(move || {
         loop {
             if let Ok((device, data)) = io_receiver1.recv() {
-                //if device == 0xFF { println!("Device 0xFF received {:04X}", data)}
+                //if device == 0xFF { println!("Device 0xFF received {:#04X}", data)}
+            }
+        }
+    });*/
+
+    // CPU lives its life on his own thread
+    thread::spawn(move || {
+        // Letting peripherals start on their own thread
+        thread::sleep(Duration::from_millis(1000));
+
+        loop {
+            for _ in 0..50 {
+                c.execute_slice();
+            }
+            match c.bus.channel_send(0x3C00, 0x3FFF) {
+                Ok(_) => (),
+                Err(_) => { /*println!("VRAM Send error") */}
             }
         }
     });
