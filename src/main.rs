@@ -17,7 +17,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .present_vsync()
         .build()?;
 
-    let mut c = CPU::new();
+    let mut c = CPU::new(0xFFFF);
     c.set_freq(1.77);
     c.bus.load_bin("bin/trs80m13diag.bin", 0).unwrap();
     let mem_receiver1 = c.bus.rw.1.clone();
