@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     c.set_freq(1.77);
     c.bus.load_bin("bin/trs80m13diag.bin", 0).unwrap();
     let mem_receiver1 = c.bus.rw.1.clone();
-    let io_receiver1 = c.io.1.clone();
+    let io_receiver1 = c.bus.io.1.clone();
 
     // Dummy IO peripheral
     thread::spawn(move || {
