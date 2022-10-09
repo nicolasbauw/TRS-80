@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut c = CPU::new(0xFFFF);
     c.set_freq(1.77);
     c.bus.load_bin("bin/trs80m13diag.bin", 0).unwrap();
-    let mem_receiver1 = c.bus.rw.1.clone();
+    let mem_receiver1 = c.bus.mmio.1.clone();
     let io_receiver1 = c.bus.io.1.clone();
 
     // Dummy IO peripheral
@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         thread::sleep(Duration::from_millis(1000));
 
         loop {
-            for _ in 0..50 {
+            for _ in 0..5000 {
                 c.execute_slice();
             }
             if let Err(_) = c.bus.channel_send(0x3C00, 0x3FFF) {
