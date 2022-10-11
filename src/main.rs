@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut c = CPU::new(0xFFFF);
     c.set_freq(1.77);
     c.bus.load_bin("bin/trs80m13diag.bin", 0).unwrap();
-    let mem_receiver1 = c.bus.mmio.1.clone();
+    let vram_receiver = c.bus.mmio_send.1.clone();
     let io_receiver1 = c.bus.io.1.clone();
 
     // Dummy IO peripheral
@@ -62,7 +62,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         // Received VRAM data from the CPU thread ?
-        if let Ok((_, data)) = mem_receiver1.recv() {
+        if let Ok((_, data)) = vram_receiver.recv() {
             display(&mut canvas, data);
         };
 
