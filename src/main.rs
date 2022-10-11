@@ -41,7 +41,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             for _ in 0..5000 {
                 c.execute_slice();
             }
-            if let Err(_) = c.bus.channel_send(0x3C00, 0x3FFF) {
+            if let Err(_) = c.bus.mmio_send(0x3C00, 0x3FFF) {
                 eprintln!("VRAM Send error");
             }
         }
