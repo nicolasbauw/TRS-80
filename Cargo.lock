@@ -98,7 +98,7 @@ dependencies = [
 [[package]]
 name = "sdl2-unifont"
 version = "1.0.2"
-source = "git+https://github.com/carlalbrecht/sdl2-unifont#070438cedca60b60fb0234b19e581bef1e6ac1f6"
+source = "git+https://github.com/carlalbrecht/sdl2-unifont?rev=070438cedca60b60fb0234b19e581bef1e6ac1f6#070438cedca60b60fb0234b19e581bef1e6ac1f6"
 dependencies = [
  "bit_field",
  "rust-lzma",
@@ -117,7 +117,7 @@ dependencies = [
 
 [[package]]
 name = "trust-80"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "sdl2",
  "sdl2-unifont",
@@ -155,6 +155,8 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 [[package]]
 name = "zilog_z80"
 version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6a18964b44a8ee995824657d61fd68ab44bca0ae021b8b6b86367b96ad2cbb6"
 dependencies = [
  "crossbeam-channel",
  "spin_sleep",
