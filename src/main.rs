@@ -21,12 +21,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     c.set_freq(1.77);
     c.bus.load_bin("bin/trs80m13diag.bin", 0).unwrap();
     let vram_receiver = c.bus.mmio_read.1.clone();
-    let io_receiver1 = c.bus.io.1.clone();
+    let periph_ff_receiver = c.bus.io_out.1.clone();
 
     // Dummy IO peripheral
     thread::spawn(move || {
         loop {
-            if let Ok((device, data)) = io_receiver1.recv() {
+            if let Ok((device, data)) = periph_ff_receiver.recv() {
                 if device == 0xFF { eprintln!("Device 0xFF received {:#04X}", data)}
             }
         }
