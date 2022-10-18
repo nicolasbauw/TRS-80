@@ -27,7 +27,7 @@ pub fn display(canvas: &mut Canvas<sdl2::video::Window>, bytes: Vec<u8>) {
 
     //println!("Chars : {:#?}", &s[0]);
     let surf = font
-        .render("Test")
+        .render(&s[0].replace("\0", "A").replace("�", "A"))
         .blended(Color::RGBA(255, 255, 255, 255))
         .map_err(|e| e.to_string()).expect("Error during line rendering");
 
@@ -36,6 +36,6 @@ pub fn display(canvas: &mut Canvas<sdl2::video::Window>, bytes: Vec<u8>) {
     let text_tex = texture_creator
             .create_texture_from_surface(surf)
             .expect("Could not create texture");
-        canvas.copy(&text_tex, None, Some(r)).expect("Could not copy texture");
+    canvas.copy(&text_tex, None, Some(r)).expect("Could not copy texture");
     
 }
