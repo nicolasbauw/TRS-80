@@ -23,6 +23,7 @@ pub fn display(canvas: &mut Canvas<sdl2::video::Window>, bytes: Vec<u8>) {
     let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string()).expect("TTF Context error");
     let font = ttf_context.load_font("assets/AnotherMansTreasureMIB64C2X3Y.ttf", 128).expect("Could not load font");
 
+    let texture_creator = canvas.texture_creator();
     let mut y = 0;
     for line in s.iter() {
         let surf = font
@@ -30,7 +31,6 @@ pub fn display(canvas: &mut Canvas<sdl2::video::Window>, bytes: Vec<u8>) {
             .blended(Color::RGBA(255, 255, 255, 255))
             .map_err(|e| e.to_string()).expect("Error during line rendering");
 
-        let texture_creator = canvas.texture_creator();
         let r = Rect::new(0, y, 800, 38);
         y += 38;
         let text_tex = texture_creator
