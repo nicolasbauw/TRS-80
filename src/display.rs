@@ -26,16 +26,19 @@ pub fn display(canvas: &mut Canvas<sdl2::video::Window>, bytes: Vec<u8>) {
     let font = ttf_context.load_font("assets/AnotherMansTreasureMIB64C2X3Y.ttf", 128).expect("Could not load font");
 
     //println!("Chars : {:#?}", &s[0]);
-    let surf = font
-        .render(&s[0].replace("\0", "A").replace("�", "A"))
-        .blended(Color::RGBA(255, 255, 255, 255))
-        .map_err(|e| e.to_string()).expect("Error during line rendering");
-
-    let texture_creator = canvas.texture_creator();
-    let r = Rect::new(0, 0, 400, 16);
-    let text_tex = texture_creator
-            .create_texture_from_surface(surf)
-            .expect("Could not create texture");
-    canvas.copy(&text_tex, None, Some(r)).expect("Could not copy texture");
-    
+    let mut y = 0;
+    for line in s.iter() {
+        let surf = font
+            .render(&line.replace("\0", "A").replace("�", "A"))
+            .blended(Color::RGBA(255, 255, 255, 255))
+            .map_err(|e| e.to_string()).expect("Error during line rendering");
+        
+        let texture_creator = canvas.texture_creator();
+        let r = Rect::new(0, y, 400, 16);
+        y += 16;
+        let text_tex = texture_creator
+                .create_texture_from_surface(surf)
+                .expect("Could not create texture");
+        canvas.copy(&text_tex, None, Some(r)).expect("Could not copy texture");
+    }
 }
