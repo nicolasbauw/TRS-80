@@ -26,8 +26,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Dummy IO peripheral
     thread::spawn(move || {
         loop {
-            if let Ok((_device, _data)) = periph_ff_receiver.recv() {
-                //if device == 0xFF { eprintln!("Device 0xFF received {:#04X}", data)}
+            if let Ok((device, data)) = periph_ff_receiver.recv() {
+                if device == 0xFF { eprintln!("Device 0xFF received {:#04X}", data)}
             }
         }
     });
@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         thread::sleep(Duration::from_millis(1000));
 
         loop {
-            for _ in 0..5000 {
+            for _ in 0..12000 {
                 c.execute_slice();
             }
             if let Err(_) = c.bus.mmio_send(0x3C00, 0x3FFF) {
@@ -66,6 +66,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             display(&mut canvas, data);
         };
 
+        thread::sleep(Duration::from_millis(16));
         canvas.present();
     }
     Ok(())
