@@ -26,8 +26,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Dummy IO peripheral
     thread::spawn(move || {
         loop {
-            if let Ok((device, data)) = periph_ff_receiver.recv() {
-                if device == 0xFF { eprintln!("Device 0xFF received {:#04X}", data)}
+            if let Ok((_device, _data)) = periph_ff_receiver.recv() {
+                //if device == 0xFF { eprintln!("Device 0xFF received {:#04X}", data)}
             }
         }
     });

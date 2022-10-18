@@ -13,6 +13,9 @@ readme = "README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-sdl2 = "0.35.2"
 sdl2-unifont = { git = "https://github.com/carlalbrecht/sdl2-unifont", rev = "070438cedca60b60fb0234b19e581bef1e6ac1f6" }
 zilog_z80 = "0.7.0"
+
+[dependencies.sdl2]
+version = "0.35.2"
+features = ["ttf"]

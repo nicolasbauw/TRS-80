@@ -1,9 +1,6 @@
 use sdl2::rect::Rect;
 use sdl2::pixels::Color;
 use sdl2::render::Canvas;
-use sdl2_unifont::renderer::SurfaceRenderer;
-use std::borrow::Cow;
-use std::str;
 
 pub fn display(canvas: &mut Canvas<sdl2::video::Window>, bytes: Vec<u8>) {
     let mut start = 0x0000;
@@ -23,32 +20,22 @@ pub fn display(canvas: &mut Canvas<sdl2::video::Window>, bytes: Vec<u8>) {
         s.push(String::from_utf8_lossy(&line));
     }
     
-    let surf = draw_lines(s);
+    //let surf = draw_lines(s);
+
+    let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string()).expect("TTF Context error");
+    let font = ttf_context.load_font("assets/AnotherMansTreasureMIB64C2X3Y.ttf", 128).expect("Could not load font");
+
+    //println!("Chars : {:#?}", &s[0]);
+    let surf = font
+        .render("Test")
+        .blended(Color::RGBA(255, 255, 255, 255))
+        .map_err(|e| e.to_string()).expect("Error during line rendering");
 
     let texture_creator = canvas.texture_creator();
+    let r = Rect::new(0, 0, 400, 16);
     let text_tex = texture_creator
             .create_texture_from_surface(surf)
-            .unwrap();
-        canvas.copy(&text_tex, None, None).unwrap();
+            .expect("Could not create texture");
+        canvas.copy(&text_tex, None, Some(r)).expect("Could not copy texture");
     
-}
-
-fn draw_lines(chars: Vec<Cow<str>>) -> sdl2::surface::Surface {
-    let mut start:i32 = 2;
-    let mut screen = sdl2::surface::Surface::new(
-        800,
-        600,
-        sdl2::pixels::PixelFormatEnum::RGBA8888,
-    ).unwrap();
-
-    for s in chars.iter() {
-        let renderer = SurfaceRenderer::new(Color::RGB(255, 255, 255), Color::RGB(0, 0, 0));
-        renderer
-            .draw(&s)
-            .unwrap()
-            .blit(None, &mut screen, Rect::new(2, start, 0, 0))
-            .unwrap();
-        start += 20;
-    }
-    screen
 }
