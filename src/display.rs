@@ -19,13 +19,10 @@ pub fn display(canvas: &mut Canvas<sdl2::video::Window>, bytes: Vec<u8>) {
     for line in line_bytes.iter() {
         s.push(String::from_utf8_lossy(&line));
     }
-    
-    //let surf = draw_lines(s);
 
     let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string()).expect("TTF Context error");
     let font = ttf_context.load_font("assets/AnotherMansTreasureMIB64C2X3Y.ttf", 128).expect("Could not load font");
 
-    //println!("Chars : {:#?}", &s[0]);
     let mut y = 0;
     for line in s.iter() {
         let surf = font
