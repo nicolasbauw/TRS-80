@@ -32,10 +32,10 @@ pub fn display(canvas: &mut Canvas<sdl2::video::Window>, bytes: Vec<u8>) {
             .render(&line.replace("\0", "A").replace("�", "A"))
             .blended(Color::RGBA(255, 255, 255, 255))
             .map_err(|e| e.to_string()).expect("Error during line rendering");
-        
+
         let texture_creator = canvas.texture_creator();
-        let r = Rect::new(0, y, 400, 16);
-        y += 16;
+        let r = Rect::new(0, y, 800, 38);
+        y += 38;
         let text_tex = texture_creator
                 .create_texture_from_surface(surf)
                 .expect("Could not create texture");
