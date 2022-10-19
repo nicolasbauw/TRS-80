@@ -35,16 +35,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // CPU lives its life on his own thread
     thread::spawn(move || {
-        // Letting time for peripherals to start on their own thread
-        thread::sleep(Duration::from_millis(1000));
-
         loop {
-            //for _ in 0..12000 {
-                c.execute_slice();
-            //}
-            //if let Err(_) = c.bus.mmio_send(0x3C00, 0x3FFF) {
-            //    eprintln!("VRAM Send error");
-            //}
+            c.execute_slice();
         }
     });
 
@@ -65,7 +57,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         // VRAM data request
         vram_req.send((0x3C00, 1024)).unwrap();
 
-        // Received VRAM data from the CPU thread ?
+        // Received VRAM data ?
         if let Ok((_, data)) = vram_receiver.recv() {
             display(&mut canvas, data);
         };
