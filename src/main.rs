@@ -21,6 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     c.set_freq(1.77);
     c.bus.load_bin("bin/trs80m13diag.bin", 0).unwrap();
     let vram_receiver = c.bus.mmio_read.1.clone();
+    let vram_req = c.bus.mmio_req.0.clone();
     let periph_ff_receiver = c.bus.io_out.1.clone();
 
     // Dummy IO peripheral
@@ -38,12 +39,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         thread::sleep(Duration::from_millis(1000));
 
         loop {
-            for _ in 0..12000 {
+            //for _ in 0..12000 {
                 c.execute_slice();
-            }
-            if let Err(_) = c.bus.mmio_send(0x3C00, 0x3FFF) {
-                eprintln!("VRAM Send error");
-            }
+            //}
+            //if let Err(_) = c.bus.mmio_send(0x3C00, 0x3FFF) {
+            //    eprintln!("VRAM Send error");
+            //}
         }
     });
 
@@ -60,6 +61,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                 _ => {}
             }
         }
+
+        // VRAM data request
+        vram_req.send((0x3C00, 1024)).unwrap();
 
         // Received VRAM data from the CPU thread ?
         if let Ok((_, data)) = vram_receiver.recv() {
