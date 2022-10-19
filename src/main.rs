@@ -55,7 +55,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         // VRAM data request
-        vram_req.send((0x3C00, 1024)).unwrap();
+        vram_req.send((0x3C00, 1024)).expect("Error while requesting VRAM data");
 
         // Received VRAM data ?
         if let Ok((_, data)) = vram_receiver.recv() {
