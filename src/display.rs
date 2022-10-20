@@ -5,11 +5,18 @@ use sdl2::render::Canvas;
 pub fn display(canvas: &mut Canvas<sdl2::video::Window>, bytes: Vec<u8>) {
     let mut start = 0x0000;
     let mut end = 0x0040;
-    let mut line_bytes: Vec<&[u8]> = Vec::new();
+    let mut line_bytes: Vec<&[u16]> = Vec::new();
+
+    // Converting VRAM data to UTF-16
+    let mut utf_data: Vec<u16> = Vec::new();
+    for c in bytes.iter() {
+        let d = (0xE0 << 8) | u16::from(*c);
+        utf_data.push(d);
+    }
     
     // Cutting the video memory into lines of bytes
     for _ in 0..15 {
-        line_bytes.push(&bytes[start..end]);
+        line_bytes.push(&utf_data[start..end]);
         start += 0x40;
         end += 0x40;
     }
@@ -17,7 +24,7 @@ pub fn display(canvas: &mut Canvas<sdl2::video::Window>, bytes: Vec<u8>) {
     // Creating the text lines
     let mut s = Vec::new();
     for line in line_bytes.iter() {
-        s.push(String::from_utf8_lossy(&line));
+        s.push(String::from_utf16_lossy(&line));
     }
 
     let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string()).expect("TTF Context error");
@@ -27,7 +34,7 @@ pub fn display(canvas: &mut Canvas<sdl2::video::Window>, bytes: Vec<u8>) {
     let mut y = 0;
     for line in s.iter() {
         let surf = font
-            .render(&line.replace("\0", "A").replace("�", "A"))
+            .render(&line)
             .blended(Color::RGBA(255, 255, 255, 255))
             .map_err(|e| e.to_string()).expect("Error during line rendering");
 
