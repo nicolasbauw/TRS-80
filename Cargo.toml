@@ -1,6 +1,6 @@
 [package]
 name = "trust-80"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["Nicolas BAUW <nbauw@hotmail.com>"]
 description = "TRS-80 Emulator"
@@ -13,7 +13,7 @@ readme = "README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-zilog_z80 = { path = "../ZilogZ80" }
+zilog_z80 = "0.8.0"
 
 [dependencies.sdl2]
 version = "0.35.2"

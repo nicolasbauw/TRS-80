@@ -86,7 +86,7 @@ dependencies = [
 
 [[package]]
 name = "trust-80"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "sdl2",
  "zilog_z80",
@@ -122,7 +122,9 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "zilog_z80"
-version = "0.7.0"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f07c3757b9e6fabde8a527b6fc733507af33f95417617c2ccdef7d7b5cd67ca6"
 dependencies = [
  "crossbeam-channel",
  "spin_sleep",
