@@ -2,7 +2,7 @@ use sdl2::rect::Rect;
 use sdl2::pixels::Color;
 use sdl2::render::Canvas;
 
-pub fn display(canvas: &mut Canvas<sdl2::video::Window>, bytes: Vec<u8>) {
+pub fn display(canvas: &mut Canvas<sdl2::video::Window>, bytes: Vec<u8>, config: &crate::config::Config) {
     let mut start = 0x0000;
     let mut end = 0x0040;
     let mut line_bytes: Vec<&[u16]> = Vec::new();
@@ -38,8 +38,8 @@ pub fn display(canvas: &mut Canvas<sdl2::video::Window>, bytes: Vec<u8>) {
             .blended(Color::RGBA(219, 220, 250, 255))
             .map_err(|e| e.to_string()).expect("Error during line rendering");
 
-        let r = Rect::new(0, y, 800, 38);
-        y += 38;
+        let r = Rect::new(0, y, config.screen.width, config.screen.height/16);
+        y += (config.screen.height as i32)/16;
         let text_tex = texture_creator
                 .create_texture_from_surface(surf)
                 .expect("Could not create texture");

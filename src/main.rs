@@ -2,13 +2,14 @@ use sdl2::{pixels::Color,event::Event,keyboard::Keycode};
 use zilog_z80::cpu::CPU;
 use std::{error::Error, thread, time::Duration};
 mod display;
-use display::display;
+mod config;
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let config = config::load_config_file()?;
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
  
-    let window = video_subsystem.window("TRuSt-80", 800, 600)
+    let window = video_subsystem.window("TRuSt-80", config.screen.width, config.screen.height)
         .position_centered()
         .build()?;
  
@@ -17,9 +18,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         .present_vsync()
         .build()?;
 
-    let mut c = CPU::new(0xFFFF);
+    let mut c = CPU::new(config.memory.ram);
     c.set_freq(1.77);
-    c.bus.load_bin("bin/trs80m13diag.bin", 0).unwrap();
+    c.bus.load_bin(&config.memory.romfile, 0)?;
     let vram_receiver = c.bus.mmio_read.1.clone();
     let vram_req = c.bus.mmio_req.0.clone();
     let periph_ff_receiver = c.bus.io_out.1.clone();
@@ -28,7 +29,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     thread::spawn(move || {
         loop {
             if let Ok((device, data)) = periph_ff_receiver.recv() {
-                if device == 0xFF { eprintln!("Device 0xFF received {:#04X}", data)}
+                if device == 0xFF {
+                    match config.debug.iodevices { 
+                        Some(true) => { eprintln!("Device 0xFF received {:#04X}", data) },
+                        None | Some(false) => continue,
+                    }
+                }
             }
         }
     });
@@ -59,7 +65,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         // Received VRAM data ?
         if let Ok((_, data)) = vram_receiver.recv() {
-            display(&mut canvas, data);
+            display::display(&mut canvas, data, &config);
         };
 
         thread::sleep(Duration::from_millis(16));

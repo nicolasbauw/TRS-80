@@ -1,0 +1,10 @@
+[screen]
+width = 800
+height = 600
+
+[memory]
+romfile = "bin/trs80m13diag.bin"
+ram = 0x4FFF
+
+[debug]
+iodevices = false
