@@ -16,7 +16,7 @@ pub struct ScreenConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct MemConfig {
-    pub romfile: String,
+    pub rom: String,
     pub ram: u16,
 }
 

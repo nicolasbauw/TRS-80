@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut c = CPU::new(config.memory.ram);
     c.set_freq(1.77);
-    c.bus.load_bin(&config.memory.romfile, 0)?;
+    c.bus.load_bin(&config.memory.rom, 0)?;
     let vram_receiver = c.bus.mmio_read.1.clone();
     let vram_req = c.bus.mmio_req.0.clone();
     let periph_ff_receiver = c.bus.io_out.1.clone();

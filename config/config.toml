@@ -3,8 +3,8 @@ width = 800
 height = 600
 
 [memory]
-romfile = "bin/trs80m13diag.bin"
-ram = 0x4FFF
+rom = "bin/trs80m13diag.bin"
+ram = 0xFFFF
 
 [debug]
 iodevices = false
