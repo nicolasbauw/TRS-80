@@ -35,7 +35,7 @@ pub fn display(canvas: &mut Canvas<sdl2::video::Window>, bytes: Vec<u8>) {
     for line in s.iter() {
         let surf = font
             .render(&line)
-            .blended(Color::RGBA(255, 255, 255, 255))
+            .blended(Color::RGBA(219, 220, 250, 255))
             .map_err(|e| e.to_string()).expect("Error during line rendering");
 
         let r = Rect::new(0, y, 800, 38);
