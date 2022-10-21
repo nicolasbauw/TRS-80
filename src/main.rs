@@ -1,7 +1,9 @@
 use sdl2::{pixels::Color,event::Event,keyboard::Keycode};
 use zilog_z80::cpu::CPU;
 use std::{error::Error, thread, time::Duration};
+use std::collections::HashSet;
 mod display;
+mod keyboard;
 mod config;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -23,6 +25,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     c.bus.load_bin(&config.memory.rom, 0)?;
     let vram_receiver = c.bus.mmio_read.1.clone();
     let vram_req = c.bus.mmio_req.0.clone();
+    let keyboard_sender = c.bus.mmio_write.0.clone();
     let periph_ff_receiver = c.bus.io_out.1.clone();
 
     // Dummy IO peripheral
@@ -46,11 +49,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     });
 
-    let mut event_pump = sdl_context.event_pump()?;
+    let mut events = sdl_context.event_pump()?;
     'running: loop {
         canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.clear();
-        for event in event_pump.poll_iter() {
+        for event in events.poll_iter() {
             match event {
                 Event::Quit {..} |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
@@ -59,6 +62,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                 _ => {}
             }
         }
+
+        let keys: HashSet<Keycode> = events
+            .keyboard_state()
+            .pressed_scancodes()
+            .filter_map(Keycode::from_scancode)
+            .collect();
+
+        keyboard::keyboard(keys, &keyboard_sender);
 
         // VRAM data request
         vram_req.send((0x3C00, 1024)).expect("Error while requesting VRAM data");

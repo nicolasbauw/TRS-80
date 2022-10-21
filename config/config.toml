@@ -5,7 +5,7 @@ font = "assets/AnotherMansTreasureMIB64C2X3Y.ttf"
 font_size = 48
 
 [memory]
-rom = "bin/trs80m13diag.bin"
+rom = "bin/level2.rom"
 ram = 0xFFFF
 
 [debug]
