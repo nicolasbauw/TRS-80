@@ -1,6 +1,6 @@
 [screen]
-width = 800
-height = 600
+width = 1024
+height = 768
 
 [memory]
 rom = "bin/trs80m13diag.bin"

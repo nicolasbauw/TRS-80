@@ -28,7 +28,7 @@ pub fn display(canvas: &mut Canvas<sdl2::video::Window>, bytes: Vec<u8>, config:
     }
 
     let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string()).expect("TTF Context error");
-    let font = ttf_context.load_font("assets/AnotherMansTreasureMIB64C2X3Y.ttf", 128).expect("Could not load font");
+    let font = ttf_context.load_font("assets/AnotherMansTreasureMIB64C2X3Y.ttf", 48).expect("Could not load font");
 
     let texture_creator = canvas.texture_creator();
     let mut y = 0;
