@@ -1,6 +1,8 @@
-[screen]
+[display]
 width = 1024
 height = 768
+font = "assets/AnotherMansTreasureMIB64C2X3Y.ttf"
+font_size = 48
 
 [memory]
 rom = "bin/trs80m13diag.bin"

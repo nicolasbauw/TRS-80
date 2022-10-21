@@ -9,7 +9,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
  
-    let window = video_subsystem.window("TRuSt-80", config.screen.width, config.screen.height)
+    let window = video_subsystem.window("TRuSt-80", config.display.width, config.display.height)
         .position_centered()
         .build()?;
  

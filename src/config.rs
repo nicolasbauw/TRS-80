@@ -3,7 +3,7 @@ use serde_derive::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    pub screen: ScreenConfig,
+    pub display: ScreenConfig,
     pub memory: MemConfig,
     pub debug: Debug,
 }
@@ -12,6 +12,8 @@ pub struct Config {
 pub struct ScreenConfig {
     pub width: u32,
     pub height: u32,
+    pub font: String,
+    pub font_size: u16,
 }
 
 #[derive(Debug, Deserialize)]
