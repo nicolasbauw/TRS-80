@@ -26,6 +26,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let vram_receiver = c.bus.mmio_read.1.clone();
     let vram_req = c.bus.mmio_req.0.clone();
     let keyboard_sender = c.bus.mmio_write.0.clone();
+    let (keys_tx, keys_rx) = zilog_z80::crossbeam_channel::bounded(0);
     let periph_ff_receiver = c.bus.io_out.1.clone();
 
     // Dummy IO peripheral
@@ -38,6 +39,15 @@ fn main() -> Result<(), Box<dyn Error>> {
                         None | Some(false) => continue,
                     }
                 }
+            }
+        }
+    });
+
+    // Keyboard MMIO peripheral
+    thread::spawn(move || {
+        loop {
+            if let Ok(keys) = keys_rx.recv() {
+                keyboard::keyboard(keys, &keyboard_sender);
             }
         }
     });
@@ -69,7 +79,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             .filter_map(Keycode::from_scancode)
             .collect();
 
-        keyboard::keyboard(keys, &keyboard_sender);
+        // Keys pressed ? We send a message to the keyboard peripheral thread
+        if keys.is_empty() == false { keys_tx.try_send(keys).unwrap_or_default() }
 
         // VRAM data request
         vram_req.send((0x3C00, 1024)).expect("Error while requesting VRAM data");
