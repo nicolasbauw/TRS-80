@@ -3,8 +3,12 @@ use sdl2::keyboard::Keycode;
 
 pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sender<(u16, u8)>) {
     //println!("{:#?}", keys);
+    // Neutral value for variable initialization
     let mut msg: (u16, u8) = (0x3880, 128);
+    let mut shift = false;
+    if keys.contains(&Keycode::RShift) | keys.contains(&Keycode::LShift) { tx.send((0x3880, 0x01)).unwrap(); shift = true }
     for k in keys.iter() {
+        //println!("{:#?}", k);
         msg = match k {
             &Keycode::A => (0x3801, 0x02),
             &Keycode::B => (0x3801, 0x04),
@@ -32,21 +36,26 @@ pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sende
             &Keycode::X => (0x3808, 0x01),
             &Keycode::Y => (0x3808, 0x02),
             &Keycode::Z => (0x3808, 0x04),
-            &Keycode::Num0 => (0x3810, 0x01),
-            &Keycode::Num1 => (0x3810, 0x02),
-            &Keycode::Num2 => (0x3810, 0x04),
-            &Keycode::Num3 => (0x3810, 0x08),
-            &Keycode::Num4 => (0x3810, 0x10),
-            &Keycode::Num5 => (0x3810, 0x20),
-            &Keycode::Num6 => (0x3810, 0x40),
-            &Keycode::Num7 => (0x3810, 0x80),
-            &Keycode::Num8 => (0x3820, 0x01),
-            &Keycode::Num9 => (0x3820, 0x02),
+            &Keycode::Num0 | &Keycode::Kp0 => (0x3810, 0x01),
+            &Keycode::Num1 | &Keycode::Kp1 => (0x3810, 0x02),
+            &Keycode::Num2 | &Keycode::Kp2 => (0x3810, 0x04),
+            &Keycode::Num3 | &Keycode::Kp3 => (0x3810, 0x08),
+            &Keycode::Num4 | &Keycode::Kp4 => (0x3810, 0x10),
+            &Keycode::Num5 | &Keycode::Kp5 => (0x3810, 0x20),
+            &Keycode::Num6 | &Keycode::Kp6 => (0x3810, 0x40),
+            &Keycode::Num7 | &Keycode::Kp7 => (0x3810, 0x80),
+            &Keycode::Num8 | &Keycode::Kp8 => (0x3820, 0x01),
+            &Keycode::Num9 | &Keycode::Kp9 => (0x3820, 0x02),
+            &Keycode::Colon => (0x3820, 0x04),
+            &Keycode::KpPlus => (0x3820, 0x08),
             &Keycode::Return => (0x3840, 0x01),
+            &Keycode::Space => (0x3840, 0x80),
             _ => { continue }
         };
         tx.send(msg).unwrap();
     }
-    thread::sleep(Duration::from_millis(80));
+    // Clearing the RAM set by the key press
+    thread::sleep(Duration::from_millis(60));
     tx.send((msg.0, 0)).unwrap();
+    if shift { tx.send((0x3880, 0)).unwrap(); }
 }
