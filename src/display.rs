@@ -15,7 +15,7 @@ pub fn display(canvas: &mut Canvas<sdl2::video::Window>, bytes: Vec<u8>, config:
     }
     
     // Cutting the video memory into lines of bytes
-    for _ in 0..15 {
+    for _ in 0..=15 {
         line_bytes.push(&utf_data[start..end]);
         start += 0x40;
         end += 0x40;
