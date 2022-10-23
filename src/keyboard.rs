@@ -55,7 +55,7 @@ pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sende
         tx.send(msg).unwrap();
     }
     // Clearing the RAM set by the key press
-    thread::sleep(Duration::from_millis(16));
+    thread::sleep(Duration::from_millis(32));
     tx.send((msg.0, 0)).unwrap();
     if shift { tx.send((0x3880, 0)).unwrap(); }
 }

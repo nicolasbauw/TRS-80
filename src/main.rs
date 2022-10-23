@@ -20,6 +20,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         .present_vsync()
         .build()?;
 
+    let mut prev_keys = HashSet::new();
+
     let mut c = CPU::new(config.memory.ram);
     c.set_freq(1.77);
     c.bus.load_bin(&config.memory.rom, 0)?;
@@ -47,6 +49,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     thread::spawn(move || {
         loop {
             if let Ok(keys) = keys_rx.recv() {
+                //thread::sleep(Duration::from_millis(32));
                 keyboard::keyboard(keys, &keyboard_sender);
             }
         }
@@ -78,9 +81,14 @@ fn main() -> Result<(), Box<dyn Error>> {
             .pressed_scancodes()
             .filter_map(Keycode::from_scancode)
             .collect();
+        
+        let mut new_keys = &keys - &prev_keys;
+        if keys.contains(&Keycode::RShift) | keys.contains(&Keycode::LShift) { new_keys.insert(Keycode::RShift); }
+        let keysc = new_keys.clone();
+        prev_keys = keys;
 
         // Keys pressed ? We send a message to the keyboard peripheral thread
-        if keys.is_empty() == false { keys_tx.try_send(keys).unwrap_or_default() }
+        if new_keys.is_empty() == false { keys_tx.send(keysc).unwrap_or_default() }
 
         // VRAM data request
         vram_req.send((0x3C00, 1024)).expect("Error while requesting VRAM data");
