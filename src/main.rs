@@ -51,7 +51,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             if let Ok(keys) = keys_rx.recv() {
                 keyboard::keyboard(keys, &keyboard_sender);
             }
-            thread::sleep(Duration::from_millis(120));
+            thread::sleep(Duration::from_millis(125));
         }
     });
 
@@ -88,7 +88,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         prev_keys = keys;*/
 
         // Keys pressed ? We send a message to the keyboard peripheral thread
-        if keys.is_empty() == false { keys_tx.send_timeout(keys, Duration::from_millis(90)).unwrap_or_default() }
+        if keys.is_empty() == false { keys_tx.send_timeout(keys, Duration::from_millis(70)).unwrap_or_default() }
 
         // VRAM data request
         vram_req.send((0x3C00, 1024)).expect("Error while requesting VRAM data");
