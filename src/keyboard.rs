@@ -57,6 +57,7 @@ pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sende
             &Keycode::Space => (0x3840, 0x80),
             _ => { continue }
         };
+        if keys.contains(&Keycode::KpPlus) { tx.send((0x3880, 0x01)).unwrap(); shift = true }
         tx.send(msg).unwrap();
     }
     // Clearing the RAM set by the key press
