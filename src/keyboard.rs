@@ -2,13 +2,13 @@ use std::{collections::HashSet, time::Duration, thread};
 use sdl2::keyboard::Keycode;
 
 pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sender<(u16, u8)>) {
-    println!("{:#?}", keys);
+    //println!("{:#?}", keys);
     // Neutral value for variable initialization
     let mut msg: (u16, u8) = (0x3880, 128);
     let mut shift = false;
     if keys.contains(&Keycode::RShift) | keys.contains(&Keycode::LShift) { tx.send((0x3880, 0x01)).unwrap(); shift = true }
     for k in keys.iter() {
-        println!("{:#?}", k);
+        //println!("{:#?}", k);
         msg = match k {
             &Keycode::A => (0x3801, 0x02),
             &Keycode::B => (0x3801, 0x04),
