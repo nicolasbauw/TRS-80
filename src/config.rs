@@ -5,6 +5,7 @@ use serde_derive::Deserialize;
 pub struct Config {
     pub display: ScreenConfig,
     pub memory: MemConfig,
+    pub keyboard: KeyboardConfig,
     pub debug: Debug,
 }
 
@@ -20,6 +21,12 @@ pub struct ScreenConfig {
 pub struct MemConfig {
     pub rom: String,
     pub ram: u16,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct KeyboardConfig {
+    pub repeat_delay: u64,
+    pub keypress_timeout: u64,
 }
 
 #[derive(Debug, Deserialize)]

@@ -8,5 +8,9 @@ font_size = 48
 rom = "bin/level2.rom"
 ram = 0xFFFF
 
+[keyboard]
+repeat_delay = 100
+keypress_timeout = 65
+
 [debug]
 iodevices = false
