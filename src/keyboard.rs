@@ -6,7 +6,7 @@ pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sende
     // Neutral value for variable initialization
     let mut msg: (u16, u8) = (0x3880, 128);
     let mut shift = false;
-    if keys.contains(&Keycode::RShift) | keys.contains(&Keycode::LShift) { tx.send((0x3880, 0x01)).unwrap(); shift = true }
+    if keys.contains(&Keycode::RShift) | keys.contains(&Keycode::LShift) { tx.send((0x3880, 0x01)).unwrap_or_default(); shift = true }
     for k in keys.iter() {
         //println!("{:#?}", k);
         msg = match k {
@@ -59,11 +59,11 @@ pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sende
             &Keycode::Space => (0x3840, 0x80),
             _ => { continue }
         };
-        if keys.contains(&Keycode::KpPlus) { tx.send((0x3880, 0x01)).unwrap(); shift = true }
-        tx.send(msg).unwrap();
+        if keys.contains(&Keycode::KpPlus) { tx.send((0x3880, 0x01)).unwrap_or_default(); shift = true }
+        tx.send(msg).unwrap_or_default();
     }
     // Clearing the RAM set by the key press
     thread::sleep(Duration::from_millis(16));
-    tx.send((msg.0, 0)).unwrap();
-    if shift { tx.send((0x3880, 0)).unwrap(); }
+    tx.send((msg.0, 0)).unwrap_or_default();
+    if shift { tx.send((0x3880, 0)).unwrap_or_default(); }
 }
