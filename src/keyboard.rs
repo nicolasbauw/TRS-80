@@ -54,7 +54,7 @@ pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sende
             &Keycode::End => (0x3840, 0x04),
             &Keycode::Up => (0x3840, 0x08),
             &Keycode::Down => (0x3840, 0x10),
-            &Keycode::Left => (0x3840, 0x20),
+            &Keycode::Left | &Keycode::Backspace => (0x3840, 0x20),
             &Keycode::Right => (0x3840, 0x40),
             &Keycode::Space => (0x3840, 0x80),
             _ => { continue }
