@@ -1,7 +1,7 @@
 use std::{collections::HashSet, time::Duration, thread};
 use sdl2::keyboard::Keycode;
 
-pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sender<(u16, u8)>) {
+pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sender<(u16, u8)>) -> bool {
     // Neutral value for variable initialization
     let mut msg: (u16, u8) = (0x3880, 128);
     let mut shift = false;
@@ -66,4 +66,6 @@ pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sende
     thread::sleep(Duration::from_millis(16));
     tx.send((msg.0, 0)).unwrap_or_default();
     if shift { tx.send((0x3880, 0)).unwrap_or_default(); }
+    // Emulator quit key
+    keys.contains(&Keycode::F12)
 }
