@@ -66,6 +66,5 @@ pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sende
     thread::sleep(Duration::from_millis(16));
     tx.send((msg.0, 0)).unwrap_or_default();
     if shift { tx.send((0x3880, 0)).unwrap_or_default(); }
-    // Emulator quit key
-    keys.contains(&Keycode::F12)
+    shift
 }

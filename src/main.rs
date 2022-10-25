@@ -1,6 +1,6 @@
 use sdl2::{pixels::Color,event::Event,keyboard::Keycode};
 use zilog_z80::cpu::CPU;
-use std::{error::Error, thread, time::Duration, process};
+use std::{error::Error, thread, time::Duration};
 use std::collections::HashSet;
 mod display;
 mod keyboard;
@@ -47,9 +47,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     thread::spawn(move || {
         loop {
             if let Ok(keys) = keys_rx.recv() {
-                if keyboard::keyboard(keys, &keyboard_sender) { process::exit(0) }
+                if !keyboard::keyboard(keys, &keyboard_sender) { thread::sleep(Duration::from_millis(config.keyboard.repeat_delay)); }
             }
-            thread::sleep(Duration::from_millis(config.keyboard.repeat_delay));
         }
     });
 
