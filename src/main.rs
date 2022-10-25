@@ -21,6 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .build()?;
 
     let mut c = CPU::new(config.memory.ram);
+    c.debug.io = config.debug.iodevices.unwrap_or(false);
     c.set_freq(1.77);
     c.bus.load_bin(&config.memory.rom, 0)?;
     let vram_receiver = c.bus.mmio_read.1.clone();
@@ -29,13 +30,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (keys_tx, keys_rx) = zilog_z80::crossbeam_channel::bounded(0);
     let periph_ff_receiver = c.bus.io_out.1.clone();
 
-    // Dummy IO peripheral
+    // 0xFF IO peripheral
     thread::spawn(move || {
         loop {
             if let Ok((device, data)) = periph_ff_receiver.recv() {
                 if device == 0xFF {
                     match config.debug.iodevices { 
-                        Some(true) => { eprintln!("Device 0xFF received {:#04X}", data) },
+                        Some(true) => { println!("Device 0xFF received {:#04X}", data) },
                         None | Some(false) => continue,
                     }
                 }
