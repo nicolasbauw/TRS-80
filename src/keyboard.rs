@@ -5,9 +5,11 @@ pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sende
     // Neutral value for variable initialization
     let mut msg: (u16, u8) = (0x3880, 128);
     let mut shift = false;
+    println!("{:#?}", keys);
     if keys.contains(&Keycode::RShift) | keys.contains(&Keycode::LShift) { tx.send((0x3880, 0x01)).unwrap_or_default(); shift = true }
     for k in keys.iter() {
         msg = match k {
+            &Keycode::At => (0x3801, 0x01),
             &Keycode::A => (0x3801, 0x02),
             &Keycode::B => (0x3801, 0x04),
             &Keycode::C => (0x3801, 0x08),
@@ -47,6 +49,7 @@ pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sende
             &Keycode::Colon => (0x3820, 0x04),
             &Keycode::KpPlus => (0x3820, 0x08),
             &Keycode::Semicolon => (0x3820, 0x08),
+            &Keycode::Less => (0x3820, 0x10),
             &Keycode::Equals => (0x3820, 0x20),
             &Keycode::KpMinus => (0x3820, 0x20),
             &Keycode::Return | &Keycode::KpEnter => (0x3840, 0x01),
@@ -59,7 +62,11 @@ pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sende
             &Keycode::Space => (0x3840, 0x80),
             _ => { continue }
         };
-        if keys.contains(&Keycode::KpPlus) | keys.contains(&Keycode::Equals) { tx.send((0x3880, 0x01)).unwrap_or_default(); shift = true }
+        if keys.contains(&Keycode::Less) & shift { msg = (0x3820, 0x40) };
+        if keys.contains(&Keycode::KpPlus)
+            | keys.contains(&Keycode::Equals) 
+            | keys.contains(&Keycode::Less) 
+            { tx.send((0x3880, 0x01)).unwrap_or_default(); shift = true }
         tx.send(msg).unwrap_or_default();
     }
     // Clearing the RAM set by the key press
