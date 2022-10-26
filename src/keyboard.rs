@@ -65,6 +65,7 @@ pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sende
             _ => { continue }
         };
         if keys.contains(&Keycode::Less) & shift { msg = (0x3820, 0x40) };
+        if keys.contains(&Keycode::Comma) & shift { msg = (0x3820, 0x80) };
         if keys.contains(&Keycode::KpPlus)
             | keys.contains(&Keycode::Equals)
             | keys.contains(&Keycode::Less)
