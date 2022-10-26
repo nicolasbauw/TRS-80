@@ -46,6 +46,7 @@ pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sende
             &Keycode::Num7 | &Keycode::Kp7 => (0x3810, 0x80),
             &Keycode::Num8 | &Keycode::Kp8 => (0x3820, 0x01),
             &Keycode::Num9 | &Keycode::Kp9 => (0x3820, 0x02),
+            &Keycode::KpMultiply => (0x3820, 0x04),
             &Keycode::Colon => (0x3820, 0x04),
             &Keycode::KpPlus => (0x3820, 0x08),
             &Keycode::Semicolon => (0x3820, 0x08),
@@ -64,8 +65,9 @@ pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sende
         };
         if keys.contains(&Keycode::Less) & shift { msg = (0x3820, 0x40) };
         if keys.contains(&Keycode::KpPlus)
-            | keys.contains(&Keycode::Equals) 
-            | keys.contains(&Keycode::Less) 
+            | keys.contains(&Keycode::Equals)
+            | keys.contains(&Keycode::Less)
+            | keys.contains(&Keycode::KpMultiply)
             { tx.send((0x3880, 0x01)).unwrap_or_default(); shift = true }
         tx.send(msg).unwrap_or_default();
     }
