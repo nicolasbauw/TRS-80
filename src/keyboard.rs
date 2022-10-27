@@ -72,9 +72,12 @@ pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sende
             { tx.send((0x3880, 0x01)).unwrap_or_default(); shift = true }
         tx.send(msg).unwrap_or_default();
     }
+    // Some routines check this address to check all the columns
+    tx.send((0x387f, 1)).unwrap_or_default();
     // Clearing the RAM set by the key press
     thread::sleep(Duration::from_millis(16));
     tx.send((msg.0, 0)).unwrap_or_default();
+    tx.send((0x387f, 0)).unwrap_or_default();
     if shift { tx.send((0x3880, 0)).unwrap_or_default(); }
     shift
 }
