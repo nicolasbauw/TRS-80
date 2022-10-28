@@ -21,28 +21,69 @@ fn main() -> Result<(), Box<dyn Error>> {
         .build()?;
 
     let mut c = CPU::new(config.memory.ram);
+    c.debug.io = config.debug.iodevices.unwrap_or(false);
     c.debug.instr_in = config.debug.iodevices.unwrap_or(false);
+    c.debug.opcode = true;
     c.set_freq(1.77);
     c.bus.load_bin(&config.memory.rom, 0)?;
     let vram_receiver = c.bus.mmio_read.1.clone();
     let vram_req = c.bus.mmio_req.0.clone();
     let keyboard_sender = c.bus.mmio_write.0.clone();
     let (keys_tx, keys_rx) = zilog_z80::crossbeam_channel::bounded(0);
-    let periph_ff_receiver = c.bus.io_out.1.clone();
+    let cassette_receiver = c.bus.io_out.1.clone();
+    let cassette_sender = c.bus.io_in.0.clone();
+    let cassette_req = c.bus.io_req.1.clone();
+    let (motor_tx, motor_rx) = zilog_z80::crossbeam_channel::bounded(0);
 
-    // 0xFF IO peripheral (Cassette)
+    // 0xFF IO peripheral (Cassette) CPU -> Cassette
     thread::spawn(move || {
+        let mut motor = false;
         loop {
             // Data sent from CPU to cassette ? (OUT)
-            if let Ok((device, data)) = periph_ff_receiver.recv() {
+            if let Ok((device, data)) = cassette_receiver.recv() {
                 if device == 0xFF {
                     match data {
-                        0x04 => { println!("MOTOR") },
+                        0x04 => {
+                            motor = !motor;
+                            println!("MOTOR REQUEST : {}", motor);
+                            motor_tx.send_timeout(motor, Duration::from_millis(250)).expect("Could not send motor status message");
+                        },
                         _ => continue,
                     }
                 }
             }
         }
+    });
+
+    // 0xFF IO peripheral (Cassette) Cassette -> CPU
+    thread::spawn(move || {
+        let tape = include_bytes!("startrek.cas");
+        let mut tape_pos = 0;
+        let mut motor = false;
+        loop {
+            if let Ok(mt) = motor_rx.try_recv() {
+                motor = mt;
+                println!("MOTOR STATE : {}", motor);
+            }
+            if let Ok(device) = cassette_req.recv() {
+                // IN instruction for the 0xFF device ?
+                if device == 0xFF && motor == true && tape_pos < tape.len() {
+                    // We send the data through the io_in channel
+                    if tape_pos < tape.len() {
+                        cassette_sender.send((0xFF, tape[tape_pos])).expect("Cassette message send error");
+                        println!("The 0xFF peripheral puts {:#04X} on the data bus", tape[tape_pos]);
+                    }
+                } else if device == 0xFF && motor == true && tape_pos >= tape.len() {
+                    cassette_sender.send((0xFF, 0x80)).expect("Cassette message send error");
+                    println!("The 0xFF peripheral puts 0x80 on the data bus (end of tape)");
+                }
+                if tape_pos < tape.len() && motor == true { tape_pos += 1; }
+                println!("Tape position : {}", tape_pos);
+            }
+            //else if device == 0xFF && motor == false {};
+        }
+        //thread::sleep(Duration::from_millis(50));
+        
     });
 
     // Keyboard MMIO peripheral
@@ -58,6 +99,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     thread::spawn(move || {
         loop {
             c.execute_slice();
+            //println!("{}", c.debug.string);
         }
     });
 
