@@ -1,7 +1,8 @@
 use std::thread;
 use zilog_z80::crossbeam_channel::{Sender, Receiver};
+use std::{fs, fs::File, io::prelude::*};
 
-pub fn serialize(input: &[u8]) -> Vec<u8> {
+pub fn serialize(input: Vec<u8>) -> Vec<u8> {
     let mut bits = Vec::new();
     for byte in input.iter() {
         for bit in (0..=7).rev() {
@@ -27,8 +28,12 @@ pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,
 
     // 0xFF IO peripheral (Cassette) Cassette -> CPU
     thread::spawn(move || {
-        let tape = include_bytes!("hangman.cas");
-        let tape_bits = serialize(tape);
+        let tape_filename = fs::read_to_string("tape/filename.txt").expect("Could not get tape image file name");
+        println!("{tape_filename}");
+        let mut f = File::open(tape_filename).expect("Could open tape image");
+        let mut buf = Vec::new();
+        f.read_to_end(&mut buf).expect("Could not read tape image file");
+        let tape_bits = serialize(buf);
         let mut tape_pos = 0;
         loop {
             if let Ok(device) = cassette_req.recv() {
