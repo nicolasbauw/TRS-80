@@ -29,7 +29,6 @@ pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,
     // 0xFF IO peripheral (Cassette) Cassette -> CPU
     thread::spawn(move || {
         let tape_filename = fs::read_to_string("tape/filename.txt").expect("Could not get tape image file name");
-        println!("{tape_filename}");
         let mut f = File::open(tape_filename).expect("Could open tape image");
         let mut buf = Vec::new();
         f.read_to_end(&mut buf).expect("Could not read tape image file");
