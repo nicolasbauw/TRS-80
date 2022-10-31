@@ -1,5 +1,18 @@
 use std::{collections::HashSet, time::Duration, thread};
 use sdl2::keyboard::Keycode;
+use zilog_z80::crossbeam_channel::{Sender, Receiver};
+
+pub fn launch(keys_rx: Receiver<HashSet<Keycode>>, keyboard_sender: Sender<(u16,u8)>) {
+    // Keyboard MMIO peripheral
+    thread::spawn(move || {
+        let config = crate::config::load_config_file().expect("Could not load config file");
+        loop {
+            if let Ok(keys) = keys_rx.recv() {
+                if !keyboard(keys, &keyboard_sender) { thread::sleep(Duration::from_millis(config.keyboard.repeat_delay)); }
+            }
+        }
+    });
+}
 
 pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sender<(u16, u8)>) -> bool {
     // Neutral value for variable initialization

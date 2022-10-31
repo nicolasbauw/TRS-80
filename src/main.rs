@@ -35,49 +35,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let cassette_sender = c.bus.io_in.0.clone();
     let cassette_req = c.bus.io_req.1.clone();
 
-    // 0xFF IO peripheral (Cassette) CPU -> Cassette
-    thread::spawn(move || {
-        loop {
-            // Data sent from CPU to cassette ? (OUT)
-            if let Ok((device, _)) = cassette_receiver.recv() {
-                if device == 0xFF {
-                     continue;
-                }
-            }
-        }
-    });
+    // Cassette IO device
+    cassette::launch(cassette_receiver, cassette_sender, cassette_req);
 
-    // 0xFF IO peripheral (Cassette) Cassette -> CPU
-    thread::spawn(move || {
-        let tape = include_bytes!("hangman.cas");
-        let tape_bits = cassette::serialize(tape);
-        let mut tape_pos = 0;
-        loop {
-            if let Ok(device) = cassette_req.recv() {
-                // IN instruction for the 0xFF device ?
-                if device == 0xFF && tape_pos < tape_bits.len() {
-                    // We send the data through the io_in channel
-                    if tape_pos < tape_bits.len() {
-                        cassette_sender.send((0xFF, tape_bits[tape_pos] << 7)).expect("Cassette message send error");
-                    }
-                } else if device == 0xFF && tape_pos >= tape_bits.len() {
-                    cassette_sender.send((0xFF, 0x00)).expect("Cassette message send error");
-                }
-                if tape_pos < tape_bits.len() { tape_pos += 1; }
-            }
-            //thread::sleep(Duration::from_millis(2));
-        }
-    });
-
-    // Keyboard MMIO peripheral
-    thread::spawn(move || {
-        loop {
-            if let Ok(keys) = keys_rx.recv() {
-                if !keyboard::keyboard(keys, &keyboard_sender) { thread::sleep(Duration::from_millis(config.keyboard.repeat_delay)); }
-            }
-        }
-    });
-
+    // Keyboard MMIO device
+    keyboard::launch(keys_rx, keyboard_sender);
+    
     // CPU lives its life on his own thread
     thread::spawn(move || {
         loop {

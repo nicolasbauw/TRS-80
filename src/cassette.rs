@@ -1,3 +1,6 @@
+use std::thread;
+use zilog_z80::crossbeam_channel::{Sender, Receiver};
+
 pub fn serialize(input: &[u8]) -> Vec<u8> {
     let mut bits = Vec::new();
     for byte in input.iter() {
@@ -7,4 +10,40 @@ pub fn serialize(input: &[u8]) -> Vec<u8> {
         }
     }
     bits
+}
+
+pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,u8)>, cassette_req: Receiver<u8>) {
+    // 0xFF IO peripheral (Cassette) CPU -> Cassette
+    thread::spawn(move || {
+        loop {
+            // Data sent from CPU to cassette ? (OUT)
+            if let Ok((device, _)) = cassette_receiver.recv() {
+                if device == 0xFF {
+                     continue;
+                }
+            }
+        }
+    });
+
+    // 0xFF IO peripheral (Cassette) Cassette -> CPU
+    thread::spawn(move || {
+        let tape = include_bytes!("hangman.cas");
+        let tape_bits = serialize(tape);
+        let mut tape_pos = 0;
+        loop {
+            if let Ok(device) = cassette_req.recv() {
+                // IN instruction for the 0xFF device ?
+                if device == 0xFF && tape_pos < tape_bits.len() {
+                    // We send the data through the io_in channel
+                    if tape_pos < tape_bits.len() {
+                        cassette_sender.send((0xFF, tape_bits[tape_pos] << 7)).expect("Cassette message send error");
+                    }
+                } else if device == 0xFF && tape_pos >= tape_bits.len() {
+                    cassette_sender.send((0xFF, 0x00)).expect("Cassette message send error");
+                }
+                if tape_pos < tape_bits.len() { tape_pos += 1; }
+            }
+            //thread::sleep(Duration::from_millis(2));
+        }
+    });
 }
