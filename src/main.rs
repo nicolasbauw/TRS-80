@@ -1,7 +1,6 @@
 use sdl2::{pixels::Color,event::Event,keyboard::Keycode};
 use zilog_z80::cpu::CPU;
-use std::{error::Error, thread, time::Duration};
-use std::collections::HashSet;
+use std::{error::Error, thread, time::Duration, collections::HashSet};
 mod display;
 mod keyboard;
 mod cassette;
@@ -31,7 +30,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let vram_req = c.bus.mmio_req.0.clone();
     let keyboard_sender = c.bus.mmio_write.0.clone();
     let (keys_tx, keys_rx) = zilog_z80::crossbeam_channel::bounded(0);
-    let (cassette_cmd_tx, cassette_cmd_rx) = zilog_z80::crossbeam_channel::bounded(1);
+    let (cassette_cmd_tx, cassette_cmd_rx) = zilog_z80::crossbeam_channel::bounded(0);
     let cassette_receiver = c.bus.io_out.1.clone();
     let cassette_sender = c.bus.io_in.0.clone();
     let cassette_req = c.bus.io_req.1.clone();
@@ -70,7 +69,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             .collect();
 
         // F7 pressed ? we "rewind / reload" the tape
-        if keys.contains(&Keycode::F7) { cassette_cmd_tx.try_send(Keycode::F7).unwrap_or_default() }
+        if keys.contains(&Keycode::F7) {
+            cassette_cmd_tx.send(Keycode::F7).unwrap_or_default();
+            thread::sleep(Duration::from_millis(250));
+        }
 
         // Keys pressed ? We send a message to the keyboard peripheral thread
         if keys.is_empty() == false { keys_tx.send_timeout(keys, Duration::from_millis(config.keyboard.keypress_timeout)).unwrap_or_default() }

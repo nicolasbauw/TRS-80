@@ -1,7 +1,6 @@
-use std::thread;
+use std::{thread, fs, fs::File, io::prelude::*, sync::Arc, sync::Mutex, time::Duration};
 use sdl2::keyboard::Keycode;
 use zilog_z80::crossbeam_channel::{Sender, Receiver};
-use std::{fs, fs::File, io::prelude::*};
 
 pub fn serialize(input: Vec<u8>) -> Vec<u8> {
     let mut bits = Vec::new();
@@ -23,6 +22,10 @@ pub fn load() -> Vec<u8> {
 }
 
 pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,u8)>, cassette_req: Receiver<u8>, cassette_cmd_rx: Receiver<Keycode>) {
+    let pos = Arc::new(Mutex::new(0));
+    let t_pos = Arc::clone(&pos);
+    let t_pos1 = Arc::clone(&pos);
+
     // 0xFF IO peripheral (Cassette) CPU -> Cassette
     thread::spawn(move || {
         loop {
@@ -37,24 +40,30 @@ pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,
 
     // 0xFF IO peripheral (Cassette) Cassette -> CPU
     thread::spawn(move || {
-        let mut tape_bits = load();
-        let mut tape_pos = 0;
+        let tape_bits = load();
         loop {
-            if let Ok(device) = cassette_req.try_recv() {
+            if let Ok(device) = cassette_req.recv() {
+                let mut tape_pos = t_pos.lock().unwrap();
                 // IN instruction for the 0xFF device ?
-                if device == 0xFF && tape_pos < tape_bits.len() {
+                if device == 0xFF && *tape_pos < tape_bits.len() {
                     // We send the data through the io_in channel
-                    if tape_pos < tape_bits.len() {
-                        cassette_sender.send((0xFF, tape_bits[tape_pos] << 7)).expect("Cassette message send error");
+                    if *tape_pos < tape_bits.len() {
+                        cassette_sender.send((0xFF, tape_bits[*tape_pos] << 7)).expect("Cassette message send error");
                     }
-                } else if device == 0xFF && tape_pos >= tape_bits.len() {
+                } else if device == 0xFF && *tape_pos >= tape_bits.len() {
                     cassette_sender.send((0xFF, 0x00)).expect("Cassette message send error");
                 }
-                if tape_pos < tape_bits.len() { tape_pos += 1; }
+                if *tape_pos < tape_bits.len() { *tape_pos += 1; }
             }
-            if let Ok(Keycode::F7) = cassette_cmd_rx.try_recv() {
-                tape_bits = load();
-                tape_pos = 0;
+        }
+    });
+
+    thread::spawn(move || {
+        loop {
+            if let Ok(Keycode::F7) = cassette_cmd_rx.recv() {
+                //tape_bits = load();
+                let mut pos = t_pos1.lock().expect("Could not lock position counter");
+                *pos = 0;
             }
         }
     });
