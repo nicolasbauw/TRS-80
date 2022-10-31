@@ -1,4 +1,5 @@
 use std::thread;
+use sdl2::keyboard::Keycode;
 use zilog_z80::crossbeam_channel::{Sender, Receiver};
 use std::{fs, fs::File, io::prelude::*};
 
@@ -13,7 +14,15 @@ pub fn serialize(input: Vec<u8>) -> Vec<u8> {
     bits
 }
 
-pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,u8)>, cassette_req: Receiver<u8>) {
+pub fn load() -> Vec<u8> {
+    let tape_filename = fs::read_to_string("tape/filename.txt").expect("Could not get tape image file name");
+    let mut f = File::open(tape_filename).expect("Could open tape image");
+    let mut buf = Vec::new();
+    f.read_to_end(&mut buf).expect("Could not read tape image file");
+    serialize(buf)
+}
+
+pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,u8)>, cassette_req: Receiver<u8>, cassette_cmd_rx: Receiver<Keycode>) {
     // 0xFF IO peripheral (Cassette) CPU -> Cassette
     thread::spawn(move || {
         loop {
@@ -28,14 +37,10 @@ pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,
 
     // 0xFF IO peripheral (Cassette) Cassette -> CPU
     thread::spawn(move || {
-        let tape_filename = fs::read_to_string("tape/filename.txt").expect("Could not get tape image file name");
-        let mut f = File::open(tape_filename).expect("Could open tape image");
-        let mut buf = Vec::new();
-        f.read_to_end(&mut buf).expect("Could not read tape image file");
-        let tape_bits = serialize(buf);
+        let mut tape_bits = load();
         let mut tape_pos = 0;
         loop {
-            if let Ok(device) = cassette_req.recv() {
+            if let Ok(device) = cassette_req.try_recv() {
                 // IN instruction for the 0xFF device ?
                 if device == 0xFF && tape_pos < tape_bits.len() {
                     // We send the data through the io_in channel
@@ -47,7 +52,10 @@ pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,
                 }
                 if tape_pos < tape_bits.len() { tape_pos += 1; }
             }
-            //thread::sleep(Duration::from_millis(2));
+            if let Ok(Keycode::F7) = cassette_cmd_rx.try_recv() {
+                tape_bits = load();
+                tape_pos = 0;
+            }
         }
     });
 }
