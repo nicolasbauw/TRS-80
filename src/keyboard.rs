@@ -66,6 +66,7 @@ pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sende
             &Keycode::Comma => (0x3820, 0x10),
             &Keycode::Equals => (0x3820, 0x20),
             &Keycode::KpMinus => (0x3820, 0x20),
+            &Keycode::KpDivide => (0x3820, 0x80),
             &Keycode::Return | &Keycode::KpEnter => (0x3840, 0x01),
             &Keycode::Home => (0x3840, 0x02),
             &Keycode::End => (0x3840, 0x04),
