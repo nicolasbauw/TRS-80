@@ -31,6 +31,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let keyboard_sender = c.bus.mmio_write.0.clone();
     let (keys_tx, keys_rx) = zilog_z80::crossbeam_channel::bounded(0);
     let (cassette_cmd_tx, cassette_cmd_rx) = zilog_z80::crossbeam_channel::bounded(0);
+    let (cpu_reset_tx, cpu_reset_rx) = zilog_z80::crossbeam_channel::bounded(0);
     let cassette_receiver = c.bus.io_out.1.clone();
     let cassette_sender = c.bus.io_in.0.clone();
     let cassette_req = c.bus.io_req.1.clone();
@@ -45,6 +46,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     thread::spawn(move || {
         loop {
             c.execute_slice();
+            if let Ok(reset) = cpu_reset_rx.try_recv() {
+                if reset { c.reg.pc = 0 }
+            }
         }
     });
 
@@ -72,6 +76,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         if keys.contains(&Keycode::F7) {
             cassette_cmd_tx.send(Keycode::F7).unwrap_or_default();
             thread::sleep(Duration::from_millis(250));
+        }
+
+        // F8 pressed ? CPU reset
+        if keys.contains(&Keycode::F8) {
+            cpu_reset_tx.send(true).unwrap_or_default();
+            thread::sleep(Duration::from_millis(50));
         }
 
         // Keys pressed ? We send a message to the keyboard peripheral thread
