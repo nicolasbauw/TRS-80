@@ -7,6 +7,7 @@ mod cassette;
 mod config;
 
 fn main() -> Result<(), Box<dyn Error>> {
+    // Setting up SDL
     let config = config::load_config_file()?;
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
@@ -20,12 +21,15 @@ fn main() -> Result<(), Box<dyn Error>> {
         .present_vsync()
         .build()?;
 
+    // Setting up CPU
     let mut c = CPU::new(config.memory.ram);
     //c.debug.io = config.debug.iodevices.unwrap_or(false);
     //c.debug.instr_in = config.debug.iodevices.unwrap_or(false);
     //c.debug.opcode = true;
     c.set_freq(1.77);
     c.bus.load_bin(&config.memory.rom, 0)?;
+
+    // Setting up channels
     let vram_receiver = c.bus.mmio_read.1.clone();
     let vram_req = c.bus.mmio_req.0.clone();
     let keyboard_sender = c.bus.mmio_write.0.clone();
@@ -36,13 +40,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let cassette_sender = c.bus.io_in.0.clone();
     let cassette_req = c.bus.io_req.1.clone();
 
-    // Cassette IO device
+    // Starting cassette IO device
     cassette::launch(cassette_receiver, cassette_sender, cassette_req, cassette_cmd_rx);
 
-    // Keyboard MMIO device
+    // Starting keyboard MMIO device
     keyboard::launch(keys_rx, keyboard_sender);
     
-    // CPU lives its life on his own thread
+    // Starting CPU
     thread::spawn(move || {
         loop {
             c.execute_slice();
@@ -52,6 +56,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     });
 
+    // SDL event loop
     let mut events = sdl_context.event_pump()?;
     'running: loop {
         canvas.set_draw_color(Color::RGB(0, 0, 0));
