@@ -64,7 +64,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         for event in events.poll_iter() {
             match event {
                 Event::Quit {..} |
-                Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                Event::KeyDown { keycode: Some(Keycode::F12), .. } => {
                     break 'running
                 },
                 _ => {}
