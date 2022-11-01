@@ -46,8 +46,8 @@ pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,
     thread::spawn(move || {
         loop {
             if let Ok(device) = cassette_req.recv() {
-                let mut tape_pos = t_pos.lock().unwrap();
-                let tape_bits = t_bits.lock().unwrap();
+                let mut tape_pos = t_pos.lock().expect("Could not lock position counter");
+                let tape_bits = t_bits.lock().expect("Could not lock tape data");
                 // IN instruction for the 0xFF device ?
                 if device == 0xFF && *tape_pos < tape_bits.len() {
                     // We send the data through the io_in channel
@@ -65,7 +65,7 @@ pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,
     thread::spawn(move || {
         loop {
             if let Ok(Keycode::F7) = cassette_cmd_rx.recv() {
-                let mut tape_bits = t_bits1.lock().unwrap();
+                let mut tape_bits = t_bits1.lock().expect("Could not lock tape data");
                 *tape_bits = load();
                 let mut pos = t_pos1.lock().expect("Could not lock position counter");
                 *pos = 0;
