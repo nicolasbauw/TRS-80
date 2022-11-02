@@ -66,6 +66,7 @@ pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sende
             &Keycode::Comma => (0x3820, 0x10),
             &Keycode::Equals => (0x3820, 0x20),
             &Keycode::KpMinus => (0x3820, 0x20),
+            &Keycode::KpPeriod => (0x3820, 0x40),
             &Keycode::KpDivide => (0x3820, 0x80),
             &Keycode::Return | &Keycode::KpEnter => (0x3840, 0x01),
             &Keycode::Home => (0x3840, 0x02),
@@ -83,6 +84,7 @@ pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sende
             | keys.contains(&Keycode::Equals)
             | keys.contains(&Keycode::Less)
             | keys.contains(&Keycode::KpMultiply)
+            | keys.contains(&Keycode::KpDecimal)
             { tx.send((0x3880, 0x01)).unwrap_or_default(); shift = true }
         tx.send(msg).unwrap_or_default();
     }
