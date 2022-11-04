@@ -1,1 +1,1 @@
-/Users/nicolasb/Dev/TRS-80/bin/hangman.cas
+/Users/nicolasb/Dev/TRS-80/bin/seawar4k.cas
