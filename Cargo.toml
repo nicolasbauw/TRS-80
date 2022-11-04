@@ -21,3 +21,13 @@ serde_derive = "1.0.145"
 [dependencies.sdl2]
 version = "0.35.2"
 features = ["ttf"]
+
+[package.metadata.bundle]
+name = "TRuSt-80"
+identifier = "com.doe.exampleapplication"
+icon = ["32x32.png", "128x128.png", "128x128@2x.png"]
+version = "0.6.0"
+resources = ["assets", "images/**/*.png"]
+copyright = "Copyright (c) Nicolas BAUW 2022. All rights reserved."
+category = "Utility"
+short_description = "TRS-80 (Model 1) emulator."
