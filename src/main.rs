@@ -23,8 +23,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Setting up CPU
     let mut c = CPU::new(config.memory.ram);
-    //c.debug.io = config.debug.iodevices.unwrap_or(false);
-    //c.debug.instr_in = config.debug.iodevices.unwrap_or(false);
+    c.debug.io = config.debug.iodevices.unwrap_or(false);
+    c.debug.instr_in = config.debug.iodevices.unwrap_or(false);
     //c.debug.opcode = true;
     c.set_freq(1.77);
     c.bus.load_bin(&config.memory.rom, 0)?;
