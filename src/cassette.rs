@@ -2,7 +2,7 @@ use std::{thread, fs, fs::File, io::prelude::*, sync::Arc, sync::Mutex};
 use sdl2::keyboard::Keycode;
 use zilog_z80::crossbeam_channel::{Sender, Receiver};
 
-pub fn serialize(input: Vec<u8>) -> Vec<u8> {
+fn serialize(input: Vec<u8>) -> Vec<u8> {
     let mut bits = Vec::new();
     for byte in input.iter() {
         for bit in (0..=7).rev() {
@@ -13,7 +13,7 @@ pub fn serialize(input: Vec<u8>) -> Vec<u8> {
     bits
 }
 
-pub fn load() -> Vec<u8> {
+fn load() -> Vec<u8> {
     let tape_filename = fs::read_to_string("tape/filename.txt").expect("Could not get tape image file name");
     let mut f = File::open(tape_filename).expect("Could open tape image");
     let mut buf = Vec::new();

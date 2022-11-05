@@ -14,7 +14,7 @@ pub fn launch(keys_rx: Receiver<HashSet<Keycode>>, keyboard_sender: Sender<(u16,
     });
 }
 
-pub fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sender<(u16, u8)>) -> bool {
+fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sender<(u16, u8)>) -> bool {
     // Neutral value for variable initialization
     let mut msg: (u16, u8) = (0x3880, 128);
     let mut shift = false;
