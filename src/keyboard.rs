@@ -1,20 +1,22 @@
 use std::{collections::HashSet, time::Duration, thread};
 use sdl2::keyboard::Keycode;
 use zilog_z80::crossbeam_channel::{Sender, Receiver};
+use crate::config;
 
 pub fn launch(keys_rx: Receiver<HashSet<Keycode>>, keyboard_sender: Sender<(u16,u8)>) {
     // Keyboard MMIO peripheral
     thread::spawn(move || {
-        let config = crate::config::load_config_file().expect("Could not load config file");
+        let config = config::load_config_file().expect("Could not load config file");
+        let mem_clr = config.keyboard.memclear_delay;
         loop {
             if let Ok(keys) = keys_rx.recv() {
-                if !keyboard(keys, &keyboard_sender) { thread::sleep(Duration::from_millis(config.keyboard.repeat_delay)); }
+                if !keyboard(keys, &keyboard_sender, mem_clr) { thread::sleep(Duration::from_millis(config.keyboard.repeat_delay)); }
             }
         }
     });
 }
 
-fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sender<(u16, u8)>) -> bool {
+fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sender<(u16, u8)>, mem_clr: u64) -> bool {
     // Neutral value for variable initialization
     let mut msg: (u16, u8) = (0x3880, 128);
     let mut shift = false;
@@ -91,7 +93,7 @@ fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sender<(u
     // Some routines check this address to check all the columns
     tx.send((0x387f, 1)).unwrap_or_default();
     // Clearing the RAM set by the key press
-    thread::sleep(Duration::from_millis(16));
+    thread::sleep(Duration::from_millis(mem_clr));
     tx.send((msg.0, 0)).unwrap_or_default();
     tx.send((0x387f, 0)).unwrap_or_default();
     if shift { tx.send((0x3880, 0)).unwrap_or_default(); }

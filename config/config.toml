@@ -11,6 +11,7 @@ ram = 0xFFFF
 [keyboard]
 repeat_delay = 120
 keypress_timeout = 65
+memclear_delay = 16
 
 [debug]
 iodevices = false

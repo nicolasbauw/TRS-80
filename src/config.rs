@@ -27,6 +27,7 @@ pub struct MemConfig {
 pub struct KeyboardConfig {
     pub repeat_delay: u64,
     pub keypress_timeout: u64,
+    pub memclear_delay: u64,
 }
 
 #[derive(Debug, Deserialize)]
