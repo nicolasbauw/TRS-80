@@ -56,8 +56,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     if reset { c.reg.pc = 0 }
                 }
             }
-        })
-        .expect("Could not create CPU thread");
+        })?;
 
     // SDL event loop
     let mut events = sdl_context.event_pump()?;
