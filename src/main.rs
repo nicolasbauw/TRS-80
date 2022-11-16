@@ -47,14 +47,17 @@ fn main() -> Result<(), Box<dyn Error>> {
     keyboard::launch(keys_rx, keyboard_sender);
     
     // Starting CPU
-    thread::spawn(move || {
-        loop {
-            c.execute_slice();
-            if let Ok(reset) = cpu_reset_rx.try_recv() {
-                if reset { c.reg.pc = 0 }
+    thread::Builder::new()
+        .name(String::from("CPU"))
+        .spawn(move || {
+            loop {
+                c.execute_slice();
+                if let Ok(reset) = cpu_reset_rx.try_recv() {
+                    if reset { c.reg.pc = 0 }
+                }
             }
-        }
-    });
+        })
+        .expect("Could not create CPU thread");
 
     // SDL event loop
     let mut events = sdl_context.event_pump()?;

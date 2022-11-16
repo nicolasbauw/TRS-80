@@ -31,45 +31,54 @@ pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,
     let t_bits1 = Arc::clone(&bits);
 
     // 0xFF IO peripheral (Cassette) CPU -> Cassette
-    thread::spawn(move || {
-        loop {
-            // Data sent from CPU to cassette ? (OUT)
-            if let Ok((device, _)) = cassette_receiver.recv() {
-                if device == 0xFF {
-                     continue;
+    thread::Builder::new()
+        .name(String::from("Cassette writer"))
+        .spawn(move || {
+            loop {
+                // Data sent from CPU to cassette ? (OUT)
+                if let Ok((device, _)) = cassette_receiver.recv() {
+                    if device == 0xFF {
+                         continue;
+                    }
                 }
             }
-        }
-    });
+        })
+        .expect("Could not create cassette writer thread");
 
     // 0xFF IO peripheral (Cassette) Cassette -> CPU
-    thread::spawn(move || {
-        loop {
-            if let Ok(device) = cassette_req.recv() {
-                let mut tape_pos = t_pos.lock().expect("Could not lock position counter");
-                let tape_bits = t_bits.lock().expect("Could not lock tape data");
-                // IN instruction for the 0xFF device ?
-                if device == 0xFF && *tape_pos < tape_bits.len() {
-                    // We send the data through the io_in channel
-                    if *tape_pos < tape_bits.len() {
-                        cassette_sender.send((0xFF, tape_bits[*tape_pos] << 7)).expect("Cassette message send error");
+    thread::Builder::new()
+        .name(String::from("Cassette reader"))
+        .spawn(move || {
+            loop {
+                if let Ok(device) = cassette_req.recv() {
+                    let mut tape_pos = t_pos.lock().expect("Could not lock position counter");
+                    let tape_bits = t_bits.lock().expect("Could not lock tape data");
+                    // IN instruction for the 0xFF device ?
+                    if device == 0xFF && *tape_pos < tape_bits.len() {
+                        // We send the data through the io_in channel
+                        if *tape_pos < tape_bits.len() {
+                            cassette_sender.send((0xFF, tape_bits[*tape_pos] << 7)).expect("Cassette message send error");
+                        }
+                    } else if device == 0xFF && *tape_pos >= tape_bits.len() {
+                        cassette_sender.send((0xFF, 0x00)).expect("Cassette message send error");
                     }
-                } else if device == 0xFF && *tape_pos >= tape_bits.len() {
-                    cassette_sender.send((0xFF, 0x00)).expect("Cassette message send error");
+                    if *tape_pos < tape_bits.len() { *tape_pos += 1; }
                 }
-                if *tape_pos < tape_bits.len() { *tape_pos += 1; }
             }
-        }
-    });
+        })
+        .expect("Could not create cassette reader thread");
 
-    thread::spawn(move || {
-        loop {
-            if let Ok(Keycode::F7) = cassette_cmd_rx.recv() {
-                let mut tape_bits = t_bits1.lock().expect("Could not lock tape data");
-                *tape_bits = load();
-                let mut pos = t_pos1.lock().expect("Could not lock position counter");
-                *pos = 0;
+    thread::Builder::new()
+        .name(String::from("Cassette data request"))
+        .spawn(move || {
+            loop {
+                if let Ok(Keycode::F7) = cassette_cmd_rx.recv() {
+                    let mut tape_bits = t_bits1.lock().expect("Could not lock tape data");
+                    *tape_bits = load();
+                    let mut pos = t_pos1.lock().expect("Could not lock position counter");
+                    *pos = 0;
+                }
             }
-        }
-    });
+        })
+        .expect("Could not create cassette data request thread");
 }
