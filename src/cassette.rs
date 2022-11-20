@@ -30,6 +30,8 @@ pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,
     let t_bits = Arc::clone(&bits);
     let t_bits1 = Arc::clone(&bits);
 
+    println!("No tape inserted !");
+
     // 0xFF IO peripheral (Cassette) CPU -> Cassette
     thread::Builder::new()
         .name(String::from("Cassette writer"))
@@ -68,6 +70,7 @@ pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,
         })
         .expect("Could not create cassette reader thread");
 
+    // Command channel receiver
     thread::Builder::new()
         .name(String::from("Cassette data request"))
         .spawn(move || {
