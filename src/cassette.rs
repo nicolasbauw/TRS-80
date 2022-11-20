@@ -21,7 +21,7 @@ fn load(filename: PathBuf) -> Vec<u8> {
     serialize(buf)
 }
 
-pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,u8)>, cassette_req: Receiver<u8>, cassette_cmd_rx: Receiver<(String, String)>) {
+pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,u8)>, cassette_req: Receiver<u8>, cassette_cmd_rx: Receiver<(String, String)>) -> Result<(), Box<dyn std::error::Error>> {
     let pos = Arc::new(Mutex::new(0));
     let t_pos = Arc::clone(&pos);
     let t_pos1 = Arc::clone(&pos);
@@ -35,7 +35,7 @@ pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,
     // 0xFF IO peripheral (Cassette) CPU -> Cassette
     thread::Builder::new()
         .name(String::from("Cassette writer"))
-        .spawn(move || {
+        .spawn(move || -> Result<(), std::io::Error> {
             loop {
                 // Data sent from CPU to cassette ? (OUT)
                 if let Ok((device, _)) = cassette_receiver.recv() {
@@ -44,13 +44,12 @@ pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,
                     }
                 }
             }
-        })
-        .expect("Could not create cassette writer thread");
+        })?;
 
     // 0xFF IO peripheral (Cassette) Cassette -> CPU
     thread::Builder::new()
         .name(String::from("Cassette reader"))
-        .spawn(move || {
+        .spawn(move || -> Result<(), zilog_z80::crossbeam_channel::SendError<(u8,u8)>> {
             loop {
                 if let Ok(device) = cassette_req.recv() {
                     let mut tape_pos = t_pos.lock().expect("Could not lock position counter");
@@ -59,21 +58,20 @@ pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,
                     if device == 0xFF && *tape_pos < tape_bits.len() {
                         // We send the data through the io_in channel
                         if *tape_pos < tape_bits.len() {
-                            cassette_sender.send((0xFF, tape_bits[*tape_pos] << 7)).expect("Cassette message send error");
+                            cassette_sender.send((0xFF, tape_bits[*tape_pos] << 7))?;
                         }
                     } else if device == 0xFF && *tape_pos >= tape_bits.len() {
-                        cassette_sender.send((0xFF, 0x00)).expect("Cassette message send error");
+                        cassette_sender.send((0xFF, 0x00))?;
                     }
                     if *tape_pos < tape_bits.len() { *tape_pos += 1; }
                 }
             }
-        })
-        .expect("Could not create cassette reader thread");
+        })?;
 
     // Command channel receiver
     thread::Builder::new()
         .name(String::from("Cassette data request"))
-        .spawn(move || {
+        .spawn(move || -> Result<(), std::io::Error> {
             loop {
                 let config = config::load_config_file().expect("Could not load config file");
                 if let Ok((cmd, filename)) = cassette_cmd_rx.recv() {
@@ -87,6 +85,6 @@ pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,
                     }
                 }
             }
-        })
-        .expect("Could not create cassette data request thread");
+        })?;
+        Ok(())
 }
