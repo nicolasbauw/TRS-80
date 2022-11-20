@@ -8,6 +8,9 @@ font_size = 48
 rom = "bin/level2.rom"
 ram = 0xFFFF
 
+[storage]
+tape_path = "/Volumes/T7/Dev/TRS-80/bin"
+
 [keyboard]
 repeat_delay = 120
 keypress_timeout = 65

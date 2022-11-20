@@ -1,6 +1,6 @@
-use std::{thread, fs, fs::File, io::prelude::*, sync::Arc, sync::Mutex};
-use sdl2::keyboard::Keycode;
+use std::{thread, fs::File, io::prelude::*, sync::Arc, sync::Mutex, path::PathBuf};
 use zilog_z80::crossbeam_channel::{Sender, Receiver};
+use crate::config;
 
 fn serialize(input: Vec<u8>) -> Vec<u8> {
     let mut bits = Vec::new();
@@ -13,20 +13,20 @@ fn serialize(input: Vec<u8>) -> Vec<u8> {
     bits
 }
 
-fn load() -> Vec<u8> {
-    let tape_filename = fs::read_to_string("tape/filename.txt").expect("Could not get tape image file name");
-    let mut f = File::open(tape_filename).expect("Could open tape image");
+fn load(filename: PathBuf) -> Vec<u8> {
+    //let tape_filename = fs::read_to_string("tape/filename.txt").expect("Could not get tape image file name");
+    let mut f = File::open(filename).expect("Could open tape image");
     let mut buf = Vec::new();
     f.read_to_end(&mut buf).expect("Could not read tape image file");
     serialize(buf)
 }
 
-pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,u8)>, cassette_req: Receiver<u8>, cassette_cmd_rx: Receiver<Keycode>) {
+pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,u8)>, cassette_req: Receiver<u8>, cassette_cmd_rx: Receiver<(String, String)>) {
     let pos = Arc::new(Mutex::new(0));
     let t_pos = Arc::clone(&pos);
     let t_pos1 = Arc::clone(&pos);
 
-    let bits = Arc::new(Mutex::new(load()));
+    let bits = Arc::new(Mutex::new(Vec::new()));
     let t_bits = Arc::clone(&bits);
     let t_bits1 = Arc::clone(&bits);
 
@@ -72,11 +72,16 @@ pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,
         .name(String::from("Cassette data request"))
         .spawn(move || {
             loop {
-                if let Ok(Keycode::F7) = cassette_cmd_rx.recv() {
-                    let mut tape_bits = t_bits1.lock().expect("Could not lock tape data");
-                    *tape_bits = load();
-                    let mut pos = t_pos1.lock().expect("Could not lock position counter");
-                    *pos = 0;
+                let config = config::load_config_file().expect("Could not load config file");
+                if let Ok((cmd, filename)) = cassette_cmd_rx.recv() {
+                    if cmd == "tape" {
+                        let mut tape_path: PathBuf = config.storage.tape_path;
+                        tape_path.push(filename);
+                        let mut tape_bits = t_bits1.lock().expect("Could not lock tape data");
+                        *tape_bits = load(tape_path);
+                        let mut pos = t_pos1.lock().expect("Could not lock position counter");
+                        *pos = 0;
+                    }
                 }
             }
         })

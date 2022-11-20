@@ -1,10 +1,11 @@
 use sdl2::{pixels::Color,event::Event,keyboard::Keycode};
 use zilog_z80::cpu::CPU;
-use std::{error::Error, thread, time::Duration, collections::HashSet};
+use std::{error::Error, fs, thread, time::Duration, collections::HashSet};
 mod display;
 mod keyboard;
 mod cassette;
 mod config;
+mod console;
 
 fn main() -> Result<(), Box<dyn Error>> {
     // Setting up SDL
@@ -39,6 +40,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     let cassette_receiver = c.bus.io_out.1.clone();
     let cassette_sender = c.bus.io_in.0.clone();
     let cassette_req = c.bus.io_req.1.clone();
+    let cassette_cmd = cassette_cmd_tx.clone();
+
+    // Starting console
+    console::launch(cassette_cmd);
 
     // Starting cassette IO device
     cassette::launch(cassette_receiver, cassette_sender, cassette_req, cassette_cmd_rx);
@@ -81,7 +86,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         // F7 pressed ? we "rewind / reload" the tape
         if keys.contains(&Keycode::F7) {
-            cassette_cmd_tx.send(Keycode::F7).unwrap_or_default();
+            let tape_filename = fs::read_to_string("tape/filename.txt").expect("Could not get tape image file name");
+            cassette_cmd_tx.send((String::from("tape"), tape_filename)).unwrap_or_default();
             thread::sleep(Duration::from_millis(250));
         }
 
