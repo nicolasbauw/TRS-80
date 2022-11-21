@@ -1,4 +1,4 @@
-use std::{thread, io::stdin, io::stdout, io::Write};
+use std::{thread, io::stdin, io::stdout, io::Write, time::Duration};
 
 pub fn launch(cassette_cmd: zilog_z80::crossbeam_channel::Sender<(String,String)>) {
     thread::Builder::new()
@@ -24,6 +24,7 @@ pub fn launch(cassette_cmd: zilog_z80::crossbeam_channel::Sender<(String,String)
                     },
                     _ => continue
                 }
+                thread::sleep(Duration::from_millis(75));
             }
         })
         .expect("Could not create console thread");
