@@ -81,7 +81,7 @@ pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,
                         let mut tape_bits = t_bits1.lock().expect("Could not lock tape data");
                         *tape_bits = match load(tape_path) {
                             Ok(f) => f,
-                            Err(_) => { println!("Could not loas cassette file !"); Vec::new() }
+                            Err(_) => { println!("Could not load cassette file !"); Vec::new() }
                         };
                         let mut pos = t_pos1.lock().expect("Could not lock position counter");
                         *pos = 0;
