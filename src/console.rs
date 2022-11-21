@@ -9,14 +9,19 @@ pub fn launch(cassette_cmd: zilog_z80::crossbeam_channel::Sender<(String,String)
                 stdout().flush().unwrap();
 
                 let mut input = String::new();
-                stdin().read_line(&mut input).unwrap();
+                if stdin().read_line(&mut input).is_err() { continue };
                 
                 let mut parts = input.trim().split_whitespace();
-                let command = parts.next().unwrap();
+                let Some(command) = parts.next() else { continue };
                 let args = parts;
 
                 match command {
-                    "tape" => { cassette_cmd.send((String::from(command), args.peekable().peek().unwrap().to_string())).unwrap() },
+                    "tape" => {
+                        match args.peekable().peek() {
+                            Some(tape) => { cassette_cmd.send((String::from(command), tape.to_string())).unwrap() },
+                            None => { println!("No tape filename !") }
+                        }
+                    },
                     _ => continue
                 }
             }
