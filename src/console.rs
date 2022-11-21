@@ -1,12 +1,12 @@
 use std::{thread, io::stdin, io::stdout, io::Write, time::Duration};
 
-pub fn launch(cassette_cmd: zilog_z80::crossbeam_channel::Sender<(String,String)>) {
+pub fn launch(cassette_cmd: zilog_z80::crossbeam_channel::Sender<(String,String)>) -> Result<(), Box<dyn std::error::Error>> {
     thread::Builder::new()
         .name(String::from("Console"))
-        .spawn(move || {
+        .spawn(move || -> Result<(), std::io::Error> {
             loop {
                 print!("> ");
-                stdout().flush().unwrap();
+                stdout().flush()?;
 
                 let mut input = String::new();
                 if stdin().read_line(&mut input).is_err() { continue };
@@ -26,6 +26,6 @@ pub fn launch(cassette_cmd: zilog_z80::crossbeam_channel::Sender<(String,String)
                 }
                 thread::sleep(Duration::from_millis(75));
             }
-        })
-        .expect("Could not create console thread");
+        })?;
+        Ok(())
 }

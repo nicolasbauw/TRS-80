@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let cassette_cmd = cassette_cmd_tx.clone();
 
     // Starting console
-    console::launch(cassette_cmd);
+    console::launch(cassette_cmd)?;
 
     // Starting cassette IO device
     cassette::launch(cassette_receiver, cassette_sender, cassette_req, cassette_cmd_rx)?;
