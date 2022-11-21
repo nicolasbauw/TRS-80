@@ -1,4 +1,4 @@
-use std::{thread, fs::File, io::prelude::*, sync::Arc, sync::Mutex, path::PathBuf};
+use std::{thread, io, fs::File, io::prelude::*, sync::Arc, sync::Mutex, path::PathBuf};
 use zilog_z80::crossbeam_channel::{Sender, Receiver};
 use crate::config;
 
@@ -13,12 +13,12 @@ fn serialize(input: Vec<u8>) -> Vec<u8> {
     bits
 }
 
-fn load(filename: PathBuf) -> Vec<u8> {
+fn load(filename: PathBuf) -> io::Result<Vec<u8>> {
     //let tape_filename = fs::read_to_string("tape/filename.txt").expect("Could not get tape image file name");
-    let mut f = File::open(filename).expect("Could open tape image");
+    let mut f = File::open(filename)?;
     let mut buf = Vec::new();
-    f.read_to_end(&mut buf).expect("Could not read tape image file");
-    serialize(buf)
+    f.read_to_end(&mut buf)?;
+    Ok(serialize(buf))
 }
 
 pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,u8)>, cassette_req: Receiver<u8>, cassette_cmd_rx: Receiver<(String, String)>) -> Result<(), Box<dyn std::error::Error>> {
@@ -73,13 +73,16 @@ pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,
         .name(String::from("Cassette data request"))
         .spawn(move || -> Result<(), std::io::Error> {
             loop {
-                let config = config::load_config_file().expect("Could not load config file");
+                let config = config::load_config_file()?;
                 if let Ok((cmd, filename)) = cassette_cmd_rx.recv() {
                     if cmd == "tape" {
                         let mut tape_path: PathBuf = config.storage.tape_path;
                         tape_path.push(filename);
                         let mut tape_bits = t_bits1.lock().expect("Could not lock tape data");
-                        *tape_bits = load(tape_path);
+                        *tape_bits = match load(tape_path) {
+                            Ok(f) => f,
+                            Err(_) => { println!("Could not loas cassette file !"); Vec::new() }
+                        };
                         let mut pos = t_pos1.lock().expect("Could not lock position counter");
                         *pos = 0;
                     }
