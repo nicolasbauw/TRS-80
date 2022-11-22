@@ -75,6 +75,10 @@ pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,
             loop {
                 let config = config::load_config_file()?;
                 if let Ok((cmd, filename)) = cassette_cmd_rx.recv() {
+                    if cmd == "tape" && filename == "rewind" {
+                        let mut pos = t_pos1.lock().expect("Could not lock position counter");
+                        *pos = 0;
+                    } else
                     if cmd == "tape" {
                         let mut tape_path: PathBuf = config.storage.tape_path;
                         tape_path.push(filename);

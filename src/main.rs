@@ -1,6 +1,6 @@
 use sdl2::{pixels::Color,event::Event,keyboard::Keycode};
 use zilog_z80::cpu::CPU;
-use std::{error::Error, fs, thread, time::Duration, collections::HashSet};
+use std::{error::Error, thread, time::Duration, collections::HashSet};
 mod display;
 mod keyboard;
 mod cassette;
@@ -84,10 +84,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             .filter_map(Keycode::from_scancode)
             .collect();
 
-        // F7 pressed ? we "rewind / reload" the tape
+        // F7 pressed ? we "rewind the tape
         if keys.contains(&Keycode::F7) {
-            let tape_filename = fs::read_to_string("tape/filename.txt").expect("Could not get tape image file name");
-            cassette_cmd_tx.send((String::from("tape"), tape_filename)).unwrap_or_default();
+            cassette_cmd_tx.send((String::from("tape"), String::from("rewind"))).unwrap_or_default();
             thread::sleep(Duration::from_millis(250));
         }
 
