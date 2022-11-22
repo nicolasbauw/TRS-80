@@ -100,7 +100,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         if keys.is_empty() == false { keys_tx.send_timeout(keys, Duration::from_millis(config.keyboard.keypress_timeout)).unwrap_or_default() }
 
         // VRAM data request
-        vram_req.send((0x3C00, 1024)).expect("Error while requesting VRAM data");
+        vram_req.send((0x3C00, 1024)).unwrap_or_default();
 
         // Received VRAM data ?
         if let Ok((_, data)) = vram_receiver.recv() {
