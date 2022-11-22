@@ -49,7 +49,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     cassette::launch(cassette_receiver, cassette_sender, cassette_req, cassette_cmd_rx)?;
 
     // Starting keyboard MMIO device
-    keyboard::launch(keys_rx, keyboard_sender);
+    keyboard::launch(keys_rx, keyboard_sender)?;
     
     // Starting CPU
     thread::Builder::new()
