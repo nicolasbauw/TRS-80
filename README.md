@@ -1,16 +1,16 @@
 # TRuSt-80
 
-This is a TRS-80 emulator, based on my [Z80 emulator](https://github.com/nicolasbauw/ZilogZ80).
+This is a TRS-80 (model 1) emulator, based on my [Z80 emulator](https://github.com/nicolasbauw/ZilogZ80).
 It has a working keyboard, can run Level 1 and Level 2 basic, and load .cas tape images.
-You will need a ROM (this [diagnostic ROM](https://github.com/misterblack1/trs80-diagnosticrom/blob/main/trs80m13diag.bin) for example), and the [AnotherMansTreasureMIB64C2X3Y.ttf](https://www.kreativekorp.com/swdownload/fonts/retro/amtreasure.zip) font.
+You will need a ROM, and the [AnotherMansTreasureMIB64C2X3Y.ttf](https://www.kreativekorp.com/swdownload/fonts/retro/amtreasure.zip) font.
 ![Screenshot](assets/TRuSt-80.png)
 
-To run:
-```
-cargo run
-```
-
-You can customize the RAM, ROM and resolution in the config.toml file.
-For now the tape selection is primitive : you specify the .cas filename in the filename.txt file.
-The F7 key can be used to "rewind" the tape, or "insert" another one once you have changed its name in the filename.txt file.
+You can customize the RAM, ROM and resolution, among other things, in the config.toml file.
+The F7 key is used to "rewind" the tape (the "tape rewind" command in console has the same effect).
 The F8 key reboots the TRS-80.
+The F12 key quits the emulator.
+
+In the console, the "tape" command is used to select the tape:
+```
+tape seawar4k.cas
+```
