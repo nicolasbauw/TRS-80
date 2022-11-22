@@ -1,4 +1,4 @@
-use std::{collections::HashSet, time::Duration, thread};
+use std::{io, collections::HashSet, time::Duration, thread};
 use sdl2::keyboard::Keycode;
 use zilog_z80::crossbeam_channel::{Sender, Receiver};
 use crate::config;
@@ -7,7 +7,7 @@ pub fn launch(keys_rx: Receiver<HashSet<Keycode>>, keyboard_sender: Sender<(u16,
     // Keyboard MMIO peripheral
     thread::Builder::new()
         .name(String::from("TRS-80 Keyboard"))
-        .spawn(move || -> Result<(), std::io::Error> {
+        .spawn(move || -> io::Result<()> {
             let config = config::load_config_file()?;
             let mem_clr = config.keyboard.memclear_delay;
             loop {

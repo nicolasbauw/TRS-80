@@ -35,7 +35,7 @@ pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,
     // 0xFF IO peripheral (Cassette) CPU -> Cassette
     thread::Builder::new()
         .name(String::from("Cassette writer"))
-        .spawn(move || -> Result<(), std::io::Error> {
+        .spawn(move || -> io::Result<()> {
             loop {
                 // Data sent from CPU to cassette ? (OUT)
                 if let Ok((device, _)) = cassette_receiver.recv() {
@@ -71,7 +71,7 @@ pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,
     // Command channel receiver
     thread::Builder::new()
         .name(String::from("Cassette data request"))
-        .spawn(move || -> Result<(), std::io::Error> {
+        .spawn(move || -> io::Result<Vec<u8>> {
             loop {
                 let config = config::load_config_file()?;
                 if let Ok((cmd, filename)) = cassette_cmd_rx.recv() {
