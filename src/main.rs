@@ -105,7 +105,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         // Received VRAM data ?
         if let Ok((_, data)) = vram_receiver.recv() {
-            display::display(&mut canvas, data, &config);
+            display::display(&mut canvas, data, &config)?;
         };
 
         thread::sleep(Duration::from_millis(16));
