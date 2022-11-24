@@ -25,6 +25,7 @@ fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sender<(u
     let mut shift = false;
     if keys.contains(&Keycode::RShift) | keys.contains(&Keycode::LShift) { tx.send((0x3880, 0x01)).unwrap_or_default(); shift = true }
     for k in keys.iter() {
+        println!("{k}");
         msg = match k {
             &Keycode::At => (0x3801, 0x01),
             &Keycode::A => (0x3801, 0x02),
@@ -83,6 +84,7 @@ fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sender<(u
             &Keycode::Space => (0x3840, 0x80),
             _ => { continue }
         };
+        if keys.contains(&Keycode::LCtrl) && keys.contains(&Keycode::RAlt) && keys.contains(&Keycode::Num0) { msg = (0x3801, 0x01) };
         if keys.contains(&Keycode::Less) & shift { msg = (0x3820, 0x40) };
         if keys.contains(&Keycode::Comma) & shift { msg = (0x3820, 0x80) };
         if keys.contains(&Keycode::KpPlus)
