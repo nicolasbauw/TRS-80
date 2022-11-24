@@ -14,7 +14,6 @@ fn serialize(input: Vec<u8>) -> Vec<u8> {
 }
 
 fn load(filename: PathBuf) -> io::Result<Vec<u8>> {
-    //let tape_filename = fs::read_to_string("tape/filename.txt").expect("Could not get tape image file name");
     let mut f = File::open(filename)?;
     let mut buf = Vec::new();
     f.read_to_end(&mut buf)?;
