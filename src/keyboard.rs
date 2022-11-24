@@ -25,7 +25,6 @@ fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sender<(u
     let mut shift = false;
     if keys.contains(&Keycode::RShift) | keys.contains(&Keycode::LShift) { tx.send((0x3880, 0x01)).unwrap_or_default(); shift = true }
     for k in keys.iter() {
-        println!("{k}");
         msg = match k {
             &Keycode::At => (0x3801, 0x01),
             &Keycode::A => (0x3801, 0x02),
