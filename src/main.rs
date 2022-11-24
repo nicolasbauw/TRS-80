@@ -55,6 +55,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     thread::Builder::new()
         .name(String::from("CPU"))
         .spawn(move || {
+            thread::sleep(Duration::from_millis(500));
             loop {
                 c.execute_slice();
                 if let Ok(reset) = cpu_reset_rx.try_recv() {
