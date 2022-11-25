@@ -23,7 +23,11 @@ fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sender<(u
     // Neutral value for variable initialization
     let mut msg: (u16, u8) = (0x3880, 128);
     let mut shift = false;
-    if keys.contains(&Keycode::RShift) | keys.contains(&Keycode::LShift) { tx.send((0x3880, 0x01)).unwrap_or_default(); shift = true }
+    if keys.contains(&Keycode::RShift)
+        | keys.contains(&Keycode::LShift)
+        | keys.contains(&Keycode::LeftParen)
+        | keys.contains(&Keycode::RightParen)
+        { tx.send((0x3880, 0x01)).unwrap_or_default(); shift = true }
     for k in keys.iter() {
         msg = match k {
             &Keycode::At => (0x3801, 0x01),
@@ -61,8 +65,8 @@ fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sender<(u
             &Keycode::Num5 | &Keycode::Kp5 => (0x3810, 0x20),
             &Keycode::Num6 | &Keycode::Kp6 => (0x3810, 0x40),
             &Keycode::Num7 | &Keycode::Kp7 => (0x3810, 0x80),
-            &Keycode::Num8 | &Keycode::Kp8 => (0x3820, 0x01),
-            &Keycode::Num9 | &Keycode::Kp9 => (0x3820, 0x02),
+            &Keycode::Num8 | &Keycode::Kp8 | Keycode::LeftParen => (0x3820, 0x01),
+            &Keycode::Num9 | &Keycode::Kp9 | Keycode::RightParen => (0x3820, 0x02),
             &Keycode::KpMultiply => (0x3820, 0x04),
             &Keycode::Colon => (0x3820, 0x04),
             &Keycode::KpPlus => (0x3820, 0x08),
