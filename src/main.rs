@@ -1,6 +1,6 @@
 use sdl2::{pixels::Color,event::Event,keyboard::Keycode};
 use zilog_z80::cpu::CPU;
-use std::{error::Error, thread, time::Duration, collections::HashSet};
+use std::{error::Error, thread, time::Duration, collections::HashSet, fs};
 mod display;
 mod keyboard;
 mod cassette;
@@ -29,6 +29,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     //c.debug.opcode = true;
     c.set_freq(1.77);
     c.bus.load_bin(&config.memory.rom, 0)?;
+    let rom_space = fs::metadata(&config.memory.rom)?.len();
+    c.bus.set_romspace(0, (rom_space - 1) as u16);
 
     // Setting up channels
     let vram_receiver = c.bus.mmio_read.1.clone();
