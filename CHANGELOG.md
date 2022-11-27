@@ -1,6 +1,13 @@
 # Changelog
 
 
+### 0.7.0
+
+- Code cleanup
+- Better error handling
+- Command console
+- Minor enhancements / fixes
+
 ### 0.6.0
 
 - Fixed keyboard not working with L1 basic
