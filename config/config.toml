@@ -12,9 +12,9 @@ ram = 0xFFFF
 tape_path = "bin/"
 
 [keyboard]
-repeat_delay = 120
-keypress_timeout = 65
-memclear_delay = 16
+repeat_delay = 70
+keypress_timeout = 80
+memclear_delay = 64
 
 [debug]
 iodevices = false
