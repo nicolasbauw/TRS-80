@@ -102,7 +102,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         // Keys pressed ? We send a message to the keyboard peripheral thread
         if keys.is_empty() == false { keys_tx.send_timeout(keys, Duration::from_millis(config.keyboard.keypress_timeout)).unwrap_or_default() }
 
-        // VRAM data request
+        // VRAM data request. The SDL loop seems slow, so we request data only when ready to process that data.
         vram_req.send((0x3C00, 1024)).unwrap_or_default();
 
         // Received VRAM data ?
@@ -110,8 +110,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             display::display(&mut canvas, data, &config)?;
         };
 
-        thread::sleep(Duration::from_millis(16));
         canvas.present();
+        thread::sleep(Duration::from_millis(16));
     }
     Ok(())
 }
