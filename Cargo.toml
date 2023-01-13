@@ -21,3 +21,6 @@ serde_derive = "1.0.145"
 [dependencies.sdl2]
 version = "0.35.2"
 features = ["ttf"]
+
+[target.'cfg(windows)'.dependencies]
+spin_sleep = "1.0.0"
