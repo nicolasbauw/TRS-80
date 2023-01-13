@@ -56,10 +56,19 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Starting CPU
     thread::Builder::new()
         .name(String::from("CPU"))
-        .spawn(move || {
+        .spawn(move || -> Result<(), zilog_z80::crossbeam_channel::SendError<(u16,u16)>> {
             thread::sleep(Duration::from_millis(500));
             loop {
-                c.execute_slice();
+                if let Some(sleep_time) = c.execute_timed() {
+                    // This part is executed when the slice_max_cycles is reached (frequency limit) - slice duration 16ms
+                    vram_req.send((0x3C00, 1024))?;
+
+                    #[cfg(windows)]
+                    spin_sleep::sleep(Duration::from_millis(u64::from(sleep_time)));
+
+                    #[cfg(not(windows))]
+                    std::thread::sleep(Duration::from_millis(u64::from(sleep_time)));
+                }
                 if let Ok(reset) = cpu_reset_rx.try_recv() {
                     if reset { c.reg.pc = 0 }
                 }
@@ -102,16 +111,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         // Keys pressed ? We send a message to the keyboard peripheral thread
         if keys.is_empty() == false { keys_tx.send_timeout(keys, Duration::from_millis(config.keyboard.keypress_timeout)).unwrap_or_default() }
 
-        // VRAM data request. The SDL loop seems slow, so we request data only when ready to process that data.
-        vram_req.send((0x3C00, 1024)).unwrap_or_default();
-
-        // Received VRAM data ?
+        // Received VRAM data (every 16ms) ?
         if let Ok((_, data)) = vram_receiver.recv() {
             display::display(&mut canvas, data, &config)?;
         };
 
         canvas.present();
-        thread::sleep(Duration::from_millis(16));
     }
     Ok(())
 }
