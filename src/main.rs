@@ -118,7 +118,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         if keys.is_empty() == false { keys_tx.send_timeout(keys, Duration::from_millis(config.keyboard.keypress_timeout)).unwrap_or_default() }
 
         // Received VRAM data (every 16ms) ?
-        if let Ok((_, data)) = vram_receiver.recv() {
+        if let Ok(data) = vram_receiver.recv() {
             display::display(&mut canvas, data, &config)?;
         };
 
