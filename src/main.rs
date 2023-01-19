@@ -123,7 +123,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         };
 
         canvas.present();
-        thread::sleep(Duration::from_millis(16));
     }
     Ok(())
 }
