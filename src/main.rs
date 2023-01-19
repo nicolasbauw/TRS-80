@@ -22,12 +22,18 @@ fn main() -> Result<(), Box<dyn Error>> {
         .present_vsync()
         .build()?;
 
+    let display_mode = video_subsystem.current_display_mode(0)?;
+    let refresh_rate =  display_mode.refresh_rate;
+
     // Setting up CPU
     let mut c = CPU::new(config.memory.ram);
     c.debug.io = config.debug.iodevices.unwrap_or(false);
     c.debug.instr_in = config.debug.iodevices.unwrap_or(false);
     //c.debug.opcode = true;
-    c.set_freq(1.77);
+    if refresh_rate == 50 { 
+        c.set_slice_duration(20);       // Matching a 50 Hz refresh rate
+    }
+    c.set_freq(1.77);               // Model 1 : 1.77 MHz
     c.bus.load_bin(&config.memory.rom, 0)?;
     let rom_space = fs::metadata(&config.memory.rom)?.len();
     c.bus.set_romspace(0, (rom_space - 1) as u16);
@@ -117,6 +123,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         };
 
         canvas.present();
+        thread::sleep(Duration::from_millis(16));
     }
     Ok(())
 }
