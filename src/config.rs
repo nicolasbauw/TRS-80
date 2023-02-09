@@ -47,6 +47,6 @@ pub fn load_config_file() -> Result<Config, std::io::Error> {
     let mut cfg = user_dirs.home_dir().to_path_buf();
     cfg.push(".config/trust80/config.toml");
     let buf = fs::read_to_string(cfg)?;
-    let config: Config = toml::from_str(&buf)?;
+    let config: Config = toml::from_str(&buf).unwrap();
     Ok(config)
 }
