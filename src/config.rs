@@ -43,10 +43,10 @@ pub struct Debug {
 }
 
 pub fn load_config_file() -> Result<Config, std::io::Error> {
-    let user_dirs = UserDirs::new().unwrap();
-    let mut cfg = user_dirs.home_dir().to_path_buf();
+    let user_dirs = UserDirs::new().ok_or( std::io::ErrorKind::Other);
+    let mut cfg = user_dirs?.home_dir().to_path_buf();
     cfg.push(".config/trust80/config.toml");
     let buf = fs::read_to_string(cfg)?;
-    let config: Config = toml::from_str(&buf).unwrap();
+    let config: Config = toml::from_str(&buf).map_err(|_e| std::io::ErrorKind::Other)?;
     Ok(config)
 }
