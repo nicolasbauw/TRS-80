@@ -12,7 +12,7 @@ ram = 0xFFFF
 tape_path = "bin/"
 
 [keyboard]
-repeat_delay = 100
+repeat_delay = 120
 keypress_timeout = 8
 memclear_delay = 6
 
