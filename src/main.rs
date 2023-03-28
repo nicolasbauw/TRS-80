@@ -103,7 +103,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             .filter_map(Keycode::from_scancode)
             .collect();
 
-        let keys = &new_keys - &old_keys;
+        let compare_keys = &new_keys - &old_keys;
+        let keys = match compare_keys.is_empty() {
+            true => new_keys.clone(),
+            false => old_keys
+        };
         old_keys = new_keys;
 
         // F7 pressed ? we "rewind the tape
