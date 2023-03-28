@@ -82,6 +82,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         })?;
 
     // SDL event loop
+    let mut old_keys: HashSet<Keycode> = HashSet::new();
     let mut events = sdl_context.event_pump()?;
     'running: loop {
         canvas.set_draw_color(Color::RGB(0, 0, 0));
@@ -96,11 +97,14 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         }
 
-        let keys: HashSet<Keycode> = events
+        let new_keys: HashSet<Keycode> = events
             .keyboard_state()
             .pressed_scancodes()
             .filter_map(Keycode::from_scancode)
             .collect();
+
+        let keys = &new_keys - &old_keys;
+        old_keys = new_keys;
 
         // F7 pressed ? we "rewind the tape
         if keys.contains(&Keycode::F7) {
