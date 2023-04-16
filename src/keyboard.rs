@@ -12,11 +12,9 @@ pub fn launch(keys_rx: Receiver<HashSet<Keycode>>, keyboard_sender: Sender<(u16,
             let memclear_delay = config.keyboard.memclear_delay;
             loop {
                 if let Ok(keys) = keys_rx.recv() {
-                    if !keyboard(keys, &keyboard_sender, memclear_delay) {
-                        thread::sleep(Duration::from_millis(config.keyboard.repeat_delay));
-                    }
-                    else {
-                        thread::sleep(Duration::from_millis(config.keyboard.repeat_delay/2));
+                    match keyboard(keys, &keyboard_sender, memclear_delay) {
+                        false => { thread::sleep(Duration::from_millis(config.keyboard.repeat_delay)) },
+                        true => { thread::sleep(Duration::from_millis(config.keyboard.repeat_delay/2)) }
                     }
                 }
             }
