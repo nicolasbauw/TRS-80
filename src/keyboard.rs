@@ -12,7 +12,12 @@ pub fn launch(keys_rx: Receiver<HashSet<Keycode>>, keyboard_sender: Sender<(u16,
             let mem_clr = config.keyboard.memclear_delay;
             loop {
                 if let Ok(keys) = keys_rx.recv() {
-                    if !keyboard(keys, &keyboard_sender, mem_clr) { thread::sleep(Duration::from_millis(config.keyboard.repeat_delay)); }
+                    if !keyboard(keys, &keyboard_sender, mem_clr) {
+                        thread::sleep(Duration::from_millis(config.keyboard.repeat_delay));
+                    }
+                    else {
+                        thread::sleep(Duration::from_millis(config.keyboard.repeat_delay/2));
+                    }
                 }
             }
         })?;
