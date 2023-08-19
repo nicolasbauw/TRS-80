@@ -2,3 +2,5 @@
 /bin
 .DS_Store
 assets/AnotherMansTreasureMIB64C2X3Y.ttf
+SDL2_ttf.dll
+SDL2.dll
