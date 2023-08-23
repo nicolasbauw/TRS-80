@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn Error>> {
  
     let mut canvas = window.into_canvas()
         .accelerated()
-        //.present_vsync()
+        .present_vsync()
         .build()?;
 
     let display_mode = video_subsystem.current_display_mode(0)?;
@@ -42,8 +42,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     //let (vram_tx, vram_rx) = bounded(1);
 
     loop {
-        for _ in 0..2000 {
-            if c.execute_timed().is_some() { break };
+        loop {
+            if let Some(t) = c.execute_timed() {
+                //thread::sleep(Duration::from_millis(t.into()));
+                //println!("{t}");
+                break;
+            } 
         }
         let vram = bus.borrow().read_mem_slice(0x3C00, 0x4000);
         if !sdl_loop(&sdl_context, &mut canvas, vram, &config)? { break };
