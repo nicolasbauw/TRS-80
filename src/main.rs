@@ -2,7 +2,6 @@ use sdl2::{pixels::Color,event::Event,keyboard::Keycode, EventPump, render::Canv
 use zilog_z80::{bus::Bus, cpu::CPU};
 use std::{error::Error, thread, time::Duration, collections::HashSet, fs};
 use crate::config::Config;
-use crossbeam_channel::bounded;
 mod display;
 //mod keyboard;
 //mod cassette;
@@ -43,7 +42,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     //let (vram_tx, vram_rx) = bounded(1);
 
     loop {
-        c.execute_timed();
+        for _ in 0..2000 {
+            if c.execute_timed().is_some() { break };
+        }
         let vram = bus.borrow().read_mem_slice(0x3C00, 0x4000);
         if !sdl_loop(&sdl_context, &mut canvas, vram, &config)? { break };
     }
@@ -52,7 +53,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 fn sdl_loop(ctx: &sdl2::Sdl, canvas: &mut Canvas<Window>, vram: Vec<u8>, config: &Config) -> Result<bool, Box<dyn Error>> {
     //canvas.set_draw_color(Color::RGB(0, 0, 0));
-    //canvas.clear();
+    canvas.clear();
     display::display(canvas, vram, &config).unwrap();
     canvas.present();
     let mut events = ctx.event_pump()?;
