@@ -93,6 +93,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         old_keys = new_keys;
 
         keyboard_device::keyboard(keys, bus.clone());
+        //println!("Bus Rc count : {}", std::rc::Rc::strong_count(&bus));
     }
     Ok(())
 }
