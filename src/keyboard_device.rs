@@ -103,9 +103,9 @@ pub fn keyboard(keys: HashSet<Keycode>, bus: std::rc::Rc<core::cell::RefCell<Bus
     // Some routines check this address to check all the columns
     bus.borrow_mut().write_byte(0x387f, 1);
     // Clearing the RAM set by the key press
-    thread::sleep(Duration::from_millis(memclear_delay));
+    /*thread::sleep(Duration::from_millis(memclear_delay));
     bus.borrow_mut().write_byte(msg.0, 0);
-    bus.borrow_mut().write_byte(0x387f, 0);
+    bus.borrow_mut().write_byte(0x387f, 0);*/
     if shift {
         bus.borrow_mut().write_byte(0x3880, 0);
     }
