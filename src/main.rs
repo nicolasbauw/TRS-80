@@ -47,8 +47,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     //let (vram_tx, vram_rx) = bounded(1);
 
     let mut old_keys: HashSet<Keycode> = HashSet::new();
+    let mut kbd_clr_addr = 0;
 
     'running: loop {
+        // CPU loop
         loop {
             //println!("Start of CPU loop");
             // executes slice_max_cycles number of cycles
@@ -58,11 +60,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                 break;
             }
         }
+        
+        // Display
         let vram = bus.borrow().read_mem_slice(0x3C00, 0x4000);
-        tape_device(bus.clone());
-        //if !sdl_loop(&sdl_context, &mut canvas, vram, &config)? { break };
-
-        //canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.clear();
         display::display(&mut canvas, vram, &config).unwrap();
         canvas.present();
@@ -79,6 +79,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         }
 
+        // Reading keyboard events
         let new_keys: HashSet<Keycode> = events
             .keyboard_state()
             .pressed_scancodes()
@@ -92,7 +93,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         };
         old_keys = new_keys;
 
-        keyboard_device::keyboard(keys, bus.clone());
+        // Keyboard MMIO peripheral
+        bus.borrow_mut().write_byte(kbd_clr_addr, 0);
+        bus.borrow_mut().write_byte(0x387f, 0);
+        kbd_clr_addr = keyboard_device::keyboard(keys, bus.clone());
+
+        // Tape IO peripheral
+        tape_device(bus.clone());
+
         //println!("Bus Rc count : {}", std::rc::Rc::strong_count(&bus));
     }
     Ok(())
