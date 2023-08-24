@@ -3,7 +3,7 @@ use sdl2::keyboard::Keycode;
 use std::{collections::HashSet, io, thread, time::Duration};
 use zilog_z80::bus::Bus;
 
-pub fn keyboard(keys: HashSet<Keycode>, bus: std::rc::Rc<core::cell::RefCell<Bus>>) -> bool {
+pub fn keyboard(keys: HashSet<Keycode>, bus: std::rc::Rc<core::cell::RefCell<Bus>>) -> (u16, bool) {
     let config = config::load_config_file().unwrap();
     let memclear_delay = config.keyboard.memclear_delay;
     // Neutral value for variable initialization
@@ -106,8 +106,9 @@ pub fn keyboard(keys: HashSet<Keycode>, bus: std::rc::Rc<core::cell::RefCell<Bus
     /*thread::sleep(Duration::from_millis(memclear_delay));
     bus.borrow_mut().write_byte(msg.0, 0);
     bus.borrow_mut().write_byte(0x387f, 0);*/
-    if shift {
+    /*if shift {
         bus.borrow_mut().write_byte(0x3880, 0);
-    }
-    shift
+    }*/
+    // Returning the address to clear
+    (msg.0, shift)
 }

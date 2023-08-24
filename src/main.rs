@@ -48,6 +48,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut old_keys: HashSet<Keycode> = HashSet::new();
     let mut kbd_clr_addr = 0;
+    let mut shift = false;
 
     'running: loop {
         // CPU loop
@@ -96,7 +97,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         // Keyboard MMIO peripheral
         bus.borrow_mut().write_byte(kbd_clr_addr, 0);
         bus.borrow_mut().write_byte(0x387f, 0);
-        kbd_clr_addr = keyboard_device::keyboard(keys, bus.clone());
+        if shift {
+            bus.borrow_mut().write_byte(0x3880, 0);
+        }
+        (kbd_clr_addr, shift) = keyboard_device::keyboard(keys, bus.clone());
 
         // Tape IO peripheral
         tape_device(bus.clone());
