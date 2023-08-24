@@ -1,28 +1,11 @@
-use std::{io, collections::HashSet, time::Duration, thread};
-use sdl2::keyboard::Keycode;
-use zilog_z80::crossbeam_channel::{Sender, Receiver};
 use crate::config;
+use sdl2::keyboard::Keycode;
+use std::{collections::HashSet, io, thread, time::Duration};
+use zilog_z80::bus::Bus;
 
-pub fn launch(keys_rx: Receiver<HashSet<Keycode>>, keyboard_sender: Sender<(u16,u8)>) -> Result<(), Box<dyn std::error::Error>> {
-    // Keyboard MMIO peripheral
-    thread::Builder::new()
-        .name(String::from("TRS-80 Keyboard"))
-        .spawn(move || -> io::Result<()> {
-            let config = config::load_config_file()?;
-            let memclear_delay = config.keyboard.memclear_delay;
-            loop {
-                if let Ok(keys) = keys_rx.recv() {
-                    match keyboard(keys, &keyboard_sender, memclear_delay) {
-                        false => { thread::sleep(Duration::from_millis(config.keyboard.repeat_delay)) },
-                        true => { thread::sleep(Duration::from_millis(config.keyboard.repeat_delay/2)) }
-                    }
-                }
-            }
-        })?;
-        Ok(())
-}
-
-fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sender<(u16, u8)>, memclear_delay: u64) -> bool {
+pub fn keyboard(keys: HashSet<Keycode>, bus: std::rc::Rc<core::cell::RefCell<Bus>>) -> bool {
+    let config = config::load_config_file().unwrap();
+    let memclear_delay = config.keyboard.memclear_delay;
     // Neutral value for variable initialization
     let mut msg: (u16, u8) = (0x3880, 128);
     let mut shift = false;
@@ -30,7 +13,10 @@ fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sender<(u
         | keys.contains(&Keycode::LShift)
         | keys.contains(&Keycode::LeftParen)
         | keys.contains(&Keycode::RightParen)
-        { tx.send((0x3880, 0x01)).unwrap_or_default(); shift = true }
+    {
+        bus.borrow_mut().write_byte(0x3880, 0x01);
+        shift = true
+    }
     for k in keys.iter() {
         msg = match k {
             &Keycode::At => (0x3801, 0x01),
@@ -88,25 +74,40 @@ fn keyboard(keys: HashSet<Keycode>, tx: &zilog_z80::crossbeam_channel::Sender<(u
             &Keycode::Left | &Keycode::Backspace => (0x3840, 0x20),
             &Keycode::Right => (0x3840, 0x40),
             &Keycode::Space => (0x3840, 0x80),
-            _ => { continue }
+            _ => continue,
         };
-        if keys.contains(&Keycode::LCtrl) && keys.contains(&Keycode::RAlt) && keys.contains(&Keycode::Num0) { msg = (0x3801, 0x01) };
-        if keys.contains(&Keycode::Less) & shift { msg = (0x3820, 0x40) };
-        if keys.contains(&Keycode::Comma) & shift { msg = (0x3820, 0x80) };
+        if keys.contains(&Keycode::LCtrl)
+            && keys.contains(&Keycode::RAlt)
+            && keys.contains(&Keycode::Num0)
+        {
+            msg = (0x3801, 0x01)
+        };
+        if keys.contains(&Keycode::Less) & shift {
+            msg = (0x3820, 0x40)
+        };
+        if keys.contains(&Keycode::Comma) & shift {
+            msg = (0x3820, 0x80)
+        };
         if keys.contains(&Keycode::KpPlus)
             | keys.contains(&Keycode::Equals)
             | keys.contains(&Keycode::Less)
             | keys.contains(&Keycode::KpMultiply)
             | keys.contains(&Keycode::KpDecimal)
-            { tx.send((0x3880, 0x01)).unwrap_or_default(); shift = true }
-        tx.send(msg).unwrap_or_default();
+        {
+            bus.borrow_mut().write_byte(0x3880, 0x01);
+            shift = true
+        }
+        bus.borrow_mut().write_byte(msg.0, msg.1);
+        println!("KBD : wrote {} at address {:04X}", msg.1, msg.0);
     }
     // Some routines check this address to check all the columns
-    tx.send((0x387f, 1)).unwrap_or_default();
+    bus.borrow_mut().write_byte(0x387f, 1);
     // Clearing the RAM set by the key press
     thread::sleep(Duration::from_millis(memclear_delay));
-    tx.send((msg.0, 0)).unwrap_or_default();
-    tx.send((0x387f, 0)).unwrap_or_default();
-    if shift { tx.send((0x3880, 0)).unwrap_or_default(); }
+    bus.borrow_mut().write_byte(msg.0, 0);
+    bus.borrow_mut().write_byte(0x387f, 0);
+    if shift {
+        bus.borrow_mut().write_byte(0x3880, 0);
+    }
     shift
 }
