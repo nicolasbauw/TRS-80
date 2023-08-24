@@ -1,11 +1,7 @@
-use crate::config::Config;
+//use crate::config::Config;
 use sdl2::{
     event::Event,
-    keyboard::{self, Keycode},
-    pixels::Color,
-    render::Canvas,
-    video::Window,
-    EventPump,
+    keyboard::Keycode,
 };
 use std::{collections::HashSet, error::Error, fs, thread, time::Duration};
 use zilog_z80::{bus::Bus, cpu::CPU};
@@ -54,7 +50,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         loop {
             // executes slice_max_cycles number of cycles
             if let Some(t) = c.execute_timed() {
-                //thread::sleep(Duration::from_millis(t.into()));
+                thread::sleep(Duration::from_millis(t.into()));
                 //println!("{t}");
                 break;
             }
