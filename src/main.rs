@@ -44,7 +44,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     bus.borrow_mut().load_bin(&config.memory.rom, 0)?;
     let rom_space = fs::metadata(&config.memory.rom)?.len();
     bus.borrow_mut().set_romspace(0, (rom_space - 1) as u16);
-    //let (vram_tx, vram_rx) = bounded(1);
 
     let mut old_keys: HashSet<Keycode> = HashSet::new();
     let mut kbd_clr_addr = 0;
@@ -53,7 +52,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     'running: loop {
         // CPU loop
         loop {
-            //println!("Start of CPU loop");
             // executes slice_max_cycles number of cycles
             if let Some(t) = c.execute_timed() {
                 //thread::sleep(Duration::from_millis(t.into()));
