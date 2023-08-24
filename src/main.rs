@@ -43,6 +43,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     loop {
         loop {
+            // executes slice_max_cycles number of cycles
             if let Some(t) = c.execute_timed() {
                 //thread::sleep(Duration::from_millis(t.into()));
                 //println!("{t}");
@@ -50,6 +51,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             } 
         }
         let vram = bus.borrow().read_mem_slice(0x3C00, 0x4000);
+        tape_device(bus.clone());
         if !sdl_loop(&sdl_context, &mut canvas, vram, &config)? { break };
     }
     Ok(())
@@ -71,4 +73,11 @@ fn sdl_loop(ctx: &sdl2::Sdl, canvas: &mut Canvas<Window>, vram: Vec<u8>, config:
         }
     }
     Ok(true)
+}
+
+fn tape_device(bus: std::rc::Rc<core::cell::RefCell<Bus>>) {
+    let d = bus.borrow_mut().get_io_out(0xFF);
+    if d != 0 {
+        println!("Device 0xFF received {}", d);
+    }
 }
