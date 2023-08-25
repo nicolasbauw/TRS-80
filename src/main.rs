@@ -4,7 +4,7 @@ use sdl2::{
     keyboard::Keycode,
 };
 use std::{collections::HashSet, error::Error, fs, thread, time::Duration};
-use zilog_z80::{bus::Bus, cpu::CPU};
+use zilog_z80::cpu::CPU;
 mod display;
 mod keyboard_device;
 //mod cassette;
@@ -28,8 +28,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let refresh_rate = display_mode.refresh_rate;
 
     // Setting up CPU
-    let bus = std::rc::Rc::new(std::cell::RefCell::new(Bus::new(config.memory.ram)));
-    let mut c = CPU::new(bus.clone());
+    //let bus = Bus::new(config.memory.ram);
+    let mut c = CPU::new(0xFFFF);
     c.debug.io = config.debug.iodevices.unwrap_or(false);
     c.debug.instr_in = config.debug.iodevices.unwrap_or(false);
     //c.debug.opcode = true;
@@ -37,9 +37,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         c.set_slice_duration(20); // Matching a 50 Hz refresh rate
     }
     c.set_freq(1.77); // Model 1 : 1.77 MHz
-    bus.borrow_mut().load_bin(&config.memory.rom, 0)?;
+    c.bus.load_bin(&config.memory.rom, 0)?;
     let rom_space = fs::metadata(&config.memory.rom)?.len();
-    bus.borrow_mut().set_romspace(0, (rom_space - 1) as u16);
+    c.bus.set_romspace(0, (rom_space - 1) as u16);
 
     let mut old_keys: HashSet<Keycode> = HashSet::new();
     let mut kbd_clr_addr = 0;
@@ -57,7 +57,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         
         // Display
-        let vram = bus.borrow().read_mem_slice(0x3C00, 0x4000);
+        let vram = c.bus.read_mem_slice(0x3C00, 0x4000);
         canvas.clear();
         display::display(&mut canvas, vram, &config).unwrap();
         canvas.present();
@@ -89,24 +89,25 @@ fn main() -> Result<(), Box<dyn Error>> {
         old_keys = new_keys;
 
         // Keyboard MMIO peripheral
-        bus.borrow_mut().write_byte(kbd_clr_addr, 0);
-        bus.borrow_mut().write_byte(0x387f, 0);
+        c.bus.write_byte(kbd_clr_addr, 0);
+        c.bus.write_byte(0x387f, 0);
         if shift {
-            bus.borrow_mut().write_byte(0x3880, 0);
+            c.bus.write_byte(0x3880, 0);
         }
-        (kbd_clr_addr, shift) = keyboard_device::keyboard(keys, bus.clone());
+        (kbd_clr_addr, shift) = keyboard_device::keyboard(keys, &mut  c.bus);
 
         // Tape IO peripheral
-        tape_device(bus.clone());
+        //tape_device(bus.clone());
 
         //println!("Bus Rc count : {}", std::rc::Rc::strong_count(&bus));
     }
     Ok(())
 }
 
-fn tape_device(bus: std::rc::Rc<core::cell::RefCell<Bus>>) {
-    let d = bus.borrow_mut().get_io_out(0xFF);
+/*fn tape_device(bus: std::rc::Rc<core::cell::RefCell<Bus>>) {
+    let d = c.bus.get_io_out(0xFF);
     if d != 0 {
         println!("Device 0xFF received {}", d);
     }
 }
+*/

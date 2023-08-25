@@ -2,7 +2,7 @@ use sdl2::keyboard::Keycode;
 use std::collections::HashSet;
 use zilog_z80::bus::Bus;
 
-pub fn keyboard(keys: HashSet<Keycode>, bus: std::rc::Rc<core::cell::RefCell<Bus>>) -> (u16, bool) {
+pub fn keyboard(keys: HashSet<Keycode>, bus: &mut Bus) -> (u16, bool) {
     // Neutral value for variable initialization
     let mut msg: (u16, u8) = (0x3880, 128);
     let mut shift = false;
@@ -11,7 +11,7 @@ pub fn keyboard(keys: HashSet<Keycode>, bus: std::rc::Rc<core::cell::RefCell<Bus
         | keys.contains(&Keycode::LeftParen)
         | keys.contains(&Keycode::RightParen)
     {
-        bus.borrow_mut().write_byte(0x3880, 0x01);
+        bus.write_byte(0x3880, 0x01);
         shift = true
     }
     for k in keys.iter() {
@@ -91,15 +91,15 @@ pub fn keyboard(keys: HashSet<Keycode>, bus: std::rc::Rc<core::cell::RefCell<Bus
             | keys.contains(&Keycode::KpMultiply)
             | keys.contains(&Keycode::KpDecimal)
         {
-            bus.borrow_mut().write_byte(0x3880, 0x01);
+            bus.write_byte(0x3880, 0x01);
             shift = true
         }
-        bus.borrow_mut().write_byte(msg.0, msg.1);
+        bus.write_byte(msg.0, msg.1);
         //println!("KBD : wrote {} at address {:04X}", msg.1, msg.0);
     }
 
     // Some routines check this address to check all the columns
-    bus.borrow_mut().write_byte(0x387f, 1);
+    bus.write_byte(0x387f, 1);
     
     // Returning the address to clear
     (msg.0, shift)
