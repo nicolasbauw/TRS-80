@@ -101,6 +101,6 @@ pub fn keyboard(keys: HashSet<Keycode>, bus: &mut Bus) -> (u16, bool) {
     // Some routines check this address to check all the columns
     bus.write_byte(0x387f, 1);
     
-    // Returning the address to clear
+    // Returning the address to clear and the status of the shift key
     (msg.0, shift)
 }
