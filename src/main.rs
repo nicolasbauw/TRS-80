@@ -51,7 +51,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     'running: loop {
         // CPU loop
         loop {
-            /*let opcode = c.bus.read_byte(c.reg.pc);
+            let opcode = c.bus.read_byte(c.reg.pc);
             match opcode {
                 0xdb => {
                     let port = c.bus.read_byte(c.reg.pc + 1);
@@ -60,6 +60,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     }
                     if port == 0xFF && tape.tape_position < tape.serialized_tape.len() {
                         c.reg.a = tape.serialized_tape[tape.tape_position] << 7;
+                        tape.tape_position += 1;
                     }
                 }
                 0xd3 => {
@@ -67,10 +68,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                     if let Some(true) = config.debug.iodevices {
                         println!("OUT on port {}", port);
                     }
-                    if port == 0xFF { continue }
+                    if port == 0xFF { }
                 }
                 _ => {}
-            }*/
+            }
 
             // executes slice_max_cycles number of cycles
             if let Some(t) = c.execute_timed() {
