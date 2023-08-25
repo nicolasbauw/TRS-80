@@ -17,4 +17,4 @@ keypress_timeout = 8
 memclear_delay = 6
 
 [debug]
-iodevices = true
+iodevices = false
