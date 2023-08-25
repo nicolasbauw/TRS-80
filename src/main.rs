@@ -66,7 +66,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 0xd3 => {
                     let port = c.bus.read_byte(c.reg.pc + 1);
                     if let Some(true) = config.debug.iodevices {
-                        println!("OUT on port {}", port);
+                        println!("OUT {} on port {}", c.reg.a, port);
                     }
                     if port == 0xFF { }
                 }
