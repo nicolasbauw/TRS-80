@@ -28,7 +28,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     let refresh_rate = display_mode.refresh_rate;
 
     // Setting up CPU
-    //let bus = Bus::new(config.memory.ram);
     let mut c = CPU::new(0xFFFF);
     c.debug.io = config.debug.iodevices.unwrap_or(false);
     c.debug.instr_in = config.debug.iodevices.unwrap_or(false);
@@ -46,7 +45,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut shift = false;
 
     let mut tape = cassette::CassetteReader::new();
-    tape.load("bin/seawar4k.cas".into())?;
+    tape.load("bin/invade.cas".into())?;
 
     'running: loop {
         // CPU loop
@@ -76,7 +75,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             // executes slice_max_cycles number of cycles
             if let Some(t) = c.execute_timed() {
                 thread::sleep(Duration::from_millis(t.into()));
-                //println!("{t}");
                 break;
             }
         }
@@ -121,7 +119,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         (kbd_clr_addr, shift) = keyboard::keyboard(keys, &mut  c.bus);
 
-        //println!("Bus Rc count : {}", std::rc::Rc::strong_count(&bus));
     }
     Ok(())
 }
