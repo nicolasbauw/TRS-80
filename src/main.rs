@@ -121,18 +121,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         (kbd_clr_addr, shift) = keyboard::keyboard(keys, &mut  c.bus);
 
-        // Tape IO peripheral
-        //tape_device(bus.clone());
-
         //println!("Bus Rc count : {}", std::rc::Rc::strong_count(&bus));
     }
     Ok(())
 }
-
-/*fn tape_device(bus: std::rc::Rc<core::cell::RefCell<Bus>>) {
-    let d = c.bus.get_io_out(0xFF);
-    if d != 0 {
-        println!("Device 0xFF received {}", d);
-    }
-}
-*/
