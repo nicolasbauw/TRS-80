@@ -7,7 +7,7 @@ use std::{collections::HashSet, error::Error, fs, thread, time::Duration};
 use zilog_z80::cpu::CPU;
 mod display;
 mod keyboard;
-//mod cassette;
+mod cassette;
 mod config;
 //mod console;
 
@@ -45,9 +45,33 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut kbd_clr_addr = 0;
     let mut shift = false;
 
+    let mut tape = cassette::CassetteReader::new();
+    tape.load("bin/seawar4k.cas".into())?;
+
     'running: loop {
         // CPU loop
         loop {
+            /*let opcode = c.bus.read_byte(c.reg.pc);
+            match opcode {
+                0xdb => {
+                    let port = c.bus.read_byte(c.reg.pc + 1);
+                    if let Some(true) = config.debug.iodevices {
+                        println!("IN on port {}", port);
+                    }
+                    if port == 0xFF && tape.tape_position < tape.serialized_tape.len() {
+                        c.reg.a = tape.serialized_tape[tape.tape_position] << 7;
+                    }
+                }
+                0xd3 => {
+                    let port = c.bus.read_byte(c.reg.pc + 1);
+                    if let Some(true) = config.debug.iodevices {
+                        println!("OUT on port {}", port);
+                    }
+                    if port == 0xFF { continue }
+                }
+                _ => {}
+            }*/
+
             // executes slice_max_cycles number of cycles
             if let Some(t) = c.execute_timed() {
                 thread::sleep(Duration::from_millis(t.into()));

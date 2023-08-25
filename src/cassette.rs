@@ -1,26 +1,41 @@
-use std::{thread, io, fs::File, io::prelude::*, sync::Arc, sync::Mutex, path::PathBuf};
-use zilog_z80::crossbeam_channel::{Sender, Receiver};
-use crate::config;
+use std::{io, fs::File, io::prelude::*, path::PathBuf};
+//use crate::config;
 
-fn serialize(input: Vec<u8>) -> Vec<u8> {
-    let mut bits = Vec::new();
-    for byte in input.iter() {
-        for bit in (0..=7).rev() {
-            bits.push(1);                                   // Sync pulse
-            bits.push(((byte & (1 << bit)) != 0) as u8);    // Data bit
+pub struct CassetteReader {
+    inserted_tape: Vec<u8>,
+    pub serialized_tape: Vec<u8>,
+    pub tape_position: usize,
+}
+
+impl CassetteReader {
+    pub fn new() -> Self {
+        Self {
+        inserted_tape: Vec::new(),
+        serialized_tape: Vec::new(),
+        tape_position: 0,
         }
     }
-    bits
+
+    fn serialize(&mut self) -> Vec<u8> {
+        let mut bits = Vec::new();
+        for byte in self.inserted_tape.iter() {
+            for bit in (0..=7).rev() {
+                bits.push(1);                                   // Sync pulse
+                bits.push(((byte & (1 << bit)) != 0) as u8);    // Data bit
+            }
+        }
+        bits
+    }
+
+    pub fn load(&mut self, filename: PathBuf) -> io::Result<()> {
+        let mut f = File::open(filename)?;
+        f.read_to_end(&mut self.inserted_tape)?;
+        self.serialized_tape = self.serialize();
+        Ok(())
+    }
 }
 
-fn load(filename: PathBuf) -> io::Result<Vec<u8>> {
-    let mut f = File::open(filename)?;
-    let mut buf = Vec::new();
-    f.read_to_end(&mut buf)?;
-    Ok(serialize(buf))
-}
-
-pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,u8)>, cassette_req: Receiver<u8>, cassette_cmd_rx: Receiver<(String, String)>) -> Result<(), Box<dyn std::error::Error>> {
+/*pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,u8)>, cassette_req: Receiver<u8>, cassette_cmd_rx: Receiver<(String, String)>) -> Result<(), Box<dyn std::error::Error>> {
     let pos = Arc::new(Mutex::new(0));
     let t_pos = Arc::clone(&pos);
     let t_pos1 = Arc::clone(&pos);
@@ -93,4 +108,4 @@ pub fn launch(cassette_receiver: Receiver<(u8,u8)>, cassette_sender: Sender<(u8,
             }
         })?;
         Ok(())
-}
+}*/
