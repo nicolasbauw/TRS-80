@@ -6,7 +6,7 @@ use sdl2::{
 use std::{collections::HashSet, error::Error, fs, thread, time::Duration};
 use zilog_z80::cpu::CPU;
 mod display;
-mod keyboard_device;
+mod keyboard;
 //mod cassette;
 mod config;
 //mod console;
@@ -94,7 +94,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         if shift {
             c.bus.write_byte(0x3880, 0);
         }
-        (kbd_clr_addr, shift) = keyboard_device::keyboard(keys, &mut  c.bus);
+        (kbd_clr_addr, shift) = keyboard::keyboard(keys, &mut  c.bus);
 
         // Tape IO peripheral
         //tape_device(bus.clone());
