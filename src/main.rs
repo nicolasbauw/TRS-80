@@ -111,11 +111,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         old_keys = new_keys;
 
         // Keyboard MMIO peripheral
-        c.bus.write_byte(keyboard.last, 0);
-        c.bus.write_byte(0x387f, 0);
-        if keyboard.shift {
-            c.bus.write_byte(0x3880, 0);
-        }
+        keyboard.clear_ram(&mut  c.bus);
         keyboard.set_ram(keys, &mut  c.bus);
 
     }

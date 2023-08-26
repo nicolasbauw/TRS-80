@@ -12,6 +12,14 @@ impl Keyboard {
         Keyboard { last:0, shift: false }
     }
 
+    pub fn clear_ram(&mut self, bus: &mut Bus) {
+        bus.write_byte(self.last, 0);
+        bus.write_byte(0x387f, 0);
+        if self.shift {
+            bus.write_byte(0x3880, 0);
+        }
+    }
+
     pub fn set_ram(&mut self, keys: HashSet<Keycode>, bus: &mut Bus) {
         // Neutral value for variable initialization
         let mut msg: (u16, u8) = (0x3880, 128);
