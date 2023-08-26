@@ -57,9 +57,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                     if let Some(true) = config.debug.iodevices {
                         println!("IN on port {}", port);
                     }
-                    if port == 0xFF && tape.tape_position < tape.serialized_tape.len() {
-                        c.reg.a = tape.serialized_tape[tape.tape_position] << 7;
-                        tape.tape_position += 1;
+                    // cassette reader port AND tape end not reached ?
+                    if port == 0xFF && !tape.is_end() {
+                        c.reg.a = tape.read();
                     }
                 }
                 0xd3 => {
@@ -67,7 +67,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     if let Some(true) = config.debug.iodevices {
                         println!("OUT {} on port {}", c.reg.a, port);
                     }
-                    if port == 0xFF { }
+                    if port == 0xFF {}
                 }
                 _ => {}
             }

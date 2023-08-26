@@ -3,8 +3,8 @@ use std::{io, fs::File, io::prelude::*, path::PathBuf};
 
 pub struct CassetteReader {
     inserted_tape: Vec<u8>,
-    pub serialized_tape: Vec<u8>,
-    pub tape_position: usize,
+    serialized_tape: Vec<u8>,
+    tape_position: usize,
 }
 
 impl CassetteReader {
@@ -32,5 +32,17 @@ impl CassetteReader {
         f.read_to_end(&mut self.inserted_tape)?;
         self.serialized_tape = self.serialize();
         Ok(())
+    }
+
+    // Reads the tape and increments its "position"
+    pub fn read(&mut self) -> u8 {
+        let r = self.serialized_tape[self.tape_position] << 7;
+        self.tape_position += 1;
+        r
+    }
+
+    // Tests if we have reached the end of the tape data
+    pub fn is_end(&mut self) -> bool {
+        !(self.tape_position < self.serialized_tape.len())
     }
 }
