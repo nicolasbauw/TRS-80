@@ -1,15 +1,20 @@
-use sdl2::keyboard::Keycode;
+use sdl2::{keyboard::Keycode, EventPump};
 use std::collections::HashSet;
 use zilog_z80::bus::Bus;
 
 pub struct Keyboard {
-    pub last: u16,
-    pub shift: bool,
+    last: u16,
+    shift: bool,
+    old_keys: HashSet<Keycode>,
 }
 
 impl Keyboard {
     pub fn new() -> Keyboard {
-        Keyboard { last:0, shift: false }
+        Keyboard {
+            last:0,
+            shift: false,
+            old_keys: HashSet::new(),
+        }
     }
 
     pub fn clear_ram(&mut self, bus: &mut Bus) {
@@ -20,7 +25,21 @@ impl Keyboard {
         }
     }
 
-    pub fn set_ram(&mut self, keys: HashSet<Keycode>, bus: &mut Bus) {
+    pub fn set_ram(&mut self, events: EventPump, bus: &mut Bus) {
+        // Reading keyboard events
+        let new_keys: HashSet<Keycode> = events
+            .keyboard_state()
+            .pressed_scancodes()
+            .filter_map(Keycode::from_scancode)
+            .collect();
+
+        let compare_keys = &new_keys - &self.old_keys;
+        let keys = match compare_keys.is_empty() {
+            true => new_keys.clone(),
+            false => self.old_keys.clone(),
+        };
+        self.old_keys = new_keys;
+
         // Neutral value for variable initialization
         let mut msg: (u16, u8) = (0x3880, 128);
         let mut shift = false;

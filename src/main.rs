@@ -3,7 +3,7 @@ use sdl2::{
     event::Event,
     keyboard::Keycode,
 };
-use std::{collections::HashSet, error::Error, fs, thread, time::Duration};
+use std::{error::Error, fs, thread, time::Duration};
 use zilog_z80::cpu::CPU;
 mod display;
 mod keyboard;
@@ -39,8 +39,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     c.bus.load_bin(&config.memory.rom, 0)?;
     let rom_space = fs::metadata(&config.memory.rom)?.len();
     c.bus.set_romspace(0, (rom_space - 1) as u16);
-
-    let mut old_keys: HashSet<Keycode> = HashSet::new();
 
     let mut tape = cassette::CassetteReader::new();
     let mut keyboard = keyboard::Keyboard::new();
@@ -96,23 +94,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         }
 
-        // Reading keyboard events
-        let new_keys: HashSet<Keycode> = events
-            .keyboard_state()
-            .pressed_scancodes()
-            .filter_map(Keycode::from_scancode)
-            .collect();
-
-        let compare_keys = &new_keys - &old_keys;
-        let keys = match compare_keys.is_empty() {
-            true => new_keys.clone(),
-            false => old_keys,
-        };
-        old_keys = new_keys;
-
         // Keyboard MMIO peripheral
         keyboard.clear_ram(&mut  c.bus);
-        keyboard.set_ram(keys, &mut  c.bus);
+        keyboard.set_ram(events, &mut  c.bus);
 
     }
     Ok(())
