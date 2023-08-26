@@ -57,8 +57,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                     if let Some(true) = config.debug.iodevices {
                         println!("IN on port {}", port);
                     }
-                    // cassette reader port AND tape end not reached ?
-                    if port == 0xFF && !tape.is_end() {
+                    // cassette reader port ?
+                    if port == 0xFF {
                         c.reg.a = tape.read();
                     }
                 }

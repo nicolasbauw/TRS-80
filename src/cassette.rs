@@ -36,9 +36,14 @@ impl CassetteReader {
 
     // Reads the tape and increments its "position"
     pub fn read(&mut self) -> u8 {
-        let r = self.serialized_tape[self.tape_position] << 7;
-        self.tape_position += 1;
-        r
+        match self.is_end() {
+            false => {
+                let r = self.serialized_tape[self.tape_position] << 7;
+                self.tape_position += 1;
+                return r
+            },
+            true => { return 0 }
+        }
     }
 
     // Tests if we have reached the end of the tape data
