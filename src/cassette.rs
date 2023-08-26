@@ -47,7 +47,7 @@ impl CassetteReader {
     }
 
     // Tests if we have reached the end of the tape data
-    pub fn is_end(&mut self) -> bool {
+    fn is_end(&mut self) -> bool {
         !(self.tape_position < self.serialized_tape.len())
     }
 }
