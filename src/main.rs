@@ -82,6 +82,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         display::display(&mut canvas, vram, &config).unwrap();
         canvas.present();
 
+        // SDL events
         let mut events = sdl_context.event_pump()?;
         for event in events.poll_iter() {
             match event {
