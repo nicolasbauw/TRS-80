@@ -41,10 +41,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     c.bus.set_romspace(0, (rom_space - 1) as u16);
 
     let mut old_keys: HashSet<Keycode> = HashSet::new();
-    let mut kbd_clr_addr = 0;
-    let mut shift = false;
 
     let mut tape = cassette::CassetteReader::new();
+    let mut keyboard = keyboard::Keyboard::new();
     tape.load("bin/invade.cas".into())?;
 
     'running: loop {
@@ -112,12 +111,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         old_keys = new_keys;
 
         // Keyboard MMIO peripheral
-        c.bus.write_byte(kbd_clr_addr, 0);
+        c.bus.write_byte(keyboard.last, 0);
         c.bus.write_byte(0x387f, 0);
-        if shift {
+        if keyboard.shift {
             c.bus.write_byte(0x3880, 0);
         }
-        (kbd_clr_addr, shift) = keyboard::keyboard(keys, &mut  c.bus);
+        keyboard.set_ram(keys, &mut  c.bus);
 
     }
     Ok(())
