@@ -77,7 +77,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         // Display
         let vram = c.bus.read_mem_slice(0x3C00, 0x4000);
         display.canvas.clear();
-        display.draw(vram, &config).unwrap();
+        display.draw(vram).unwrap();
         display.canvas.present();
 
         // SDL events
