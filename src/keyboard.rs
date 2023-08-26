@@ -17,7 +17,12 @@ impl Keyboard {
         }
     }
 
-    pub fn clear_ram(&mut self, bus: &mut Bus) {
+    pub fn update(&mut self, events: EventPump, bus: &mut Bus) {
+        self.clear_ram(bus);
+        self.set_ram(events, bus);
+    }
+
+    fn clear_ram(&mut self, bus: &mut Bus) {
         bus.write_byte(self.last, 0);
         bus.write_byte(0x387f, 0);
         if self.shift {
@@ -25,7 +30,7 @@ impl Keyboard {
         }
     }
 
-    pub fn set_ram(&mut self, events: EventPump, bus: &mut Bus) {
+    fn set_ram(&mut self, events: EventPump, bus: &mut Bus) {
         // Reading keyboard events
         let new_keys: HashSet<Keycode> = events
             .keyboard_state()

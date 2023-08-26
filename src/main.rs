@@ -95,8 +95,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         // Keyboard MMIO peripheral
-        keyboard.clear_ram(&mut  c.bus);
-        keyboard.set_ram(events, &mut  c.bus);
+        keyboard.update(events, &mut  c.bus);
 
     }
     Ok(())
