@@ -16,16 +16,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let config = config::load_config_file()?;
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
+    let display_mode = video_subsystem.current_display_mode(0)?;
+    let refresh_rate = display_mode.refresh_rate;
 
     let window = video_subsystem
         .window("TRuSt-80", config.display.width, config.display.height)
         .position_centered()
         .build()?;
-
-    let mut canvas = window.into_canvas().accelerated().present_vsync().build()?;
-
-    let display_mode = video_subsystem.current_display_mode(0)?;
-    let refresh_rate = display_mode.refresh_rate;
 
     // Setting up CPU
     let mut c = CPU::new(0xFFFF);
@@ -42,6 +39,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut tape = cassette::CassetteReader::new();
     let mut keyboard = keyboard::Keyboard::new();
+    let mut display = display::Display::new(window)?;
     tape.load("bin/invade.cas".into())?;
 
     'running: loop {
@@ -78,9 +76,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         
         // Display
         let vram = c.bus.read_mem_slice(0x3C00, 0x4000);
-        canvas.clear();
-        display::display(&mut canvas, vram, &config).unwrap();
-        canvas.present();
+        display.canvas.clear();
+        display.draw(vram, &config).unwrap();
+        display.canvas.present();
 
         // SDL events
         let mut events = sdl_context.event_pump()?;
