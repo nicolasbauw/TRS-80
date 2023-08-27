@@ -8,7 +8,7 @@ mod keyboard;
 mod cassette;
 mod config;
 mod machine;
-//mod console;
+mod console;
 use machine::Machine;
 
 fn main() -> Result<(), Box<dyn Error>> {
