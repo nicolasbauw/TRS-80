@@ -47,7 +47,7 @@ impl Display {
         // Creating the text lines
         let mut s = Vec::new();
         for line in line_bytes.iter() {
-            s.push(String::from_utf16_lossy(&line));
+            s.push(String::from_utf16_lossy(line));
         }
 
         let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
@@ -57,7 +57,7 @@ impl Display {
         let mut y = 0;
         for line in s.iter() {
             let surf = font
-                .render(&line)
+                .render(line)
                 .blended(Color::RGBA(219, 220, 250, 255))
                 .map_err(|e| e.to_string())?;
 

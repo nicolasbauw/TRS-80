@@ -40,9 +40,9 @@ impl CassetteReader {
             false => {
                 let r = self.serialized_tape[self.tape_position] << 7;
                 self.tape_position += 1;
-                return r
+                r
             },
-            true => { return 0 }
+            true => { 0 }
         }
     }
 
@@ -53,6 +53,6 @@ impl CassetteReader {
 
     // Tests if we have reached the end of the tape data
     fn is_end(&mut self) -> bool {
-        !(self.tape_position < self.serialized_tape.len())
+        self.tape_position >= self.serialized_tape.len()
     }
 }

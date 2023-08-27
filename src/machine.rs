@@ -73,7 +73,7 @@ impl Machine {
                 println!("RESET DONE !");
             },
             "tape" => {
-                if data == String::from("rewind") {
+                if data == *"rewind" {
                     self.tape.rewind();
                     println!("TAPE REWOUND !");
                     return Ok(());
