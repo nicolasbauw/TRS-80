@@ -1,9 +1,8 @@
-//use crate::config::Config;
 use sdl2::{
     event::Event,
     keyboard::Keycode,
 };
-use std::{error::Error, fs, thread, time::Duration};
+use std::{error::Error, thread, time::Duration};
 mod display;
 mod keyboard;
 mod cassette;
@@ -28,22 +27,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut trs80  = Machine::new(window)?;
 
     // Setting up CPU
-    /*let mut c = CPU::new(0xFFFF);
-    c.debug.io = config.debug.iodevices.unwrap_or(false);
-    c.debug.instr_in = config.debug.iodevices.unwrap_or(false);*/
     //c.debug.opcode = true;
     if refresh_rate == 50 {
         trs80.cpu.set_slice_duration(20); // Matching a 50 Hz refresh rate
     }
-    trs80.cpu.set_freq(1.77); // Model 1 : 1.77 MHz
-    trs80.cpu.bus.load_bin(&config.memory.rom, 0)?;
-    let rom_space = fs::metadata(&config.memory.rom)?.len();
-    trs80.cpu.bus.set_romspace(0, (rom_space - 1) as u16);
 
     trs80.tape.load("bin/invade.cas".into())?;
 
     'running: loop {
-        // CPU loop
+        // CPU + IO loop
         loop {
             let opcode = trs80.cpu.bus.read_byte(trs80.cpu.reg.pc);
             match opcode {
@@ -90,7 +82,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         }
 
-        // Keyboard MMIO peripheral
+        // Handle SDL keyboard events (keyboard MMIO peripheral)
         trs80.keyboard.update(events, &mut  trs80.cpu.bus);
 
     }
