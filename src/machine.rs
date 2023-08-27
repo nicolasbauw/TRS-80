@@ -1,23 +1,22 @@
 use zilog_z80::cpu::CPU;
-mod display;
-mod keyboard;
-mod cassette;
-mod config;
+use sdl2::video::Window;
+use std::error::Error;
 
-struct Machine {
-    cpu: CPU,
-    display: display::Display,
-    keyboard: keyboard::Keyboard,
-    tape: cassette::CassetteReader,
+pub struct Machine {
+    pub cpu: CPU,
+    pub display: crate::display::Display,
+    pub keyboard: crate::keyboard::Keyboard,
+    pub tape: crate::cassette::CassetteReader,
 }
 
 impl Machine {
-    pub fn new(window: Window) -> Machine {
-        Self {
+    pub fn new(window: Window) -> Result<Machine, Box<dyn Error>> {
+        let m = Self {
             cpu: CPU::new(0xFFFF),
-            display: display::Display::new(window)?,
-            keyboard: keyboard::Keyboard::new(),
-            tape: cassette::CassetteReader::new(),
-        }
+            display: crate::display::Display::new(window)?,
+            keyboard: crate::keyboard::Keyboard::new(),
+            tape: crate::cassette::CassetteReader::new(),
+        };
+        Ok(m)
     }
 }
