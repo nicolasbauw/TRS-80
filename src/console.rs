@@ -22,8 +22,7 @@ pub fn launch(cmd_channel: mpsc::Sender<(String,String)>) -> Result<(), Box<dyn 
                             None => { println!("No tape filename !") }
                         }
                     },
-                    "reset" => { cmd_channel.send((String::from(command), String::new()))? }
-                    _ => continue
+                    _ => { cmd_channel.send((String::from(command), String::new()))? },
                 }
                 thread::sleep(Duration::from_millis(75));
             }
