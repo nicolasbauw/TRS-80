@@ -4,7 +4,6 @@ use sdl2::{
     keyboard::Keycode,
 };
 use std::{error::Error, fs, thread, time::Duration};
-use zilog_z80::cpu::CPU;
 mod display;
 mod keyboard;
 mod cassette;
