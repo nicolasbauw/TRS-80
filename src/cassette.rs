@@ -46,6 +46,13 @@ impl CassetteReader {
         }
     }
 
+    // Rewinds the tape
+    pub fn rewind(&mut self) {
+        println!("Before : {}", self.tape_position);
+        self.tape_position = 0;
+        println!("After : {}", self.tape_position);
+    }
+
     // Tests if we have reached the end of the tape data
     fn is_end(&mut self) -> bool {
         !(self.tape_position < self.serialized_tape.len())
