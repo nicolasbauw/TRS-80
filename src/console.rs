@@ -11,7 +11,7 @@ pub fn launch(cmd_channel: mpsc::Sender<(String,String)>) -> Result<(), Box<dyn 
                 let mut input = String::new();
                 if stdin().read_line(&mut input).is_err() { continue };
                 
-                let mut parts = input.trim().split_whitespace();
+                let mut parts = input.split_whitespace();
                 let Some(command) = parts.next() else { continue };
                 let args = parts;
 
