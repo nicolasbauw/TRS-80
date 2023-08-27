@@ -1,9 +1,9 @@
-use std::{thread, io::stdin, io::stdout, io::Write, time::Duration};
+use std::{thread, io::stdin, io::stdout, io::Write, time::Duration, sync::mpsc};
 
-pub fn launch(cassette_cmd: zilog_z80::crossbeam_channel::Sender<(String,String)>) -> Result<(), Box<dyn std::error::Error>> {
+pub fn launch(cmd_channel: mpsc::Sender<(String,String)>) -> Result<(), Box<dyn std::error::Error>> {
     thread::Builder::new()
         .name(String::from("Console"))
-        .spawn(move || -> Result<(), zilog_z80::crossbeam_channel::SendError<(String,String)>> {
+        .spawn(move || -> Result<(), mpsc::SendError<(String,String)>> {
             loop {
                 print!("> ");
                 if stdout().flush().is_err() { continue };
@@ -18,10 +18,11 @@ pub fn launch(cassette_cmd: zilog_z80::crossbeam_channel::Sender<(String,String)
                 match command {
                     "tape" => {
                         match args.peekable().peek() {
-                            Some(tape) => { cassette_cmd.send((String::from(command), tape.to_string()))? },
+                            Some(tape) => { cmd_channel.send((String::from(command), tape.to_string()))? },
                             None => { println!("No tape filename !") }
                         }
                     },
+                    "reset" => { cmd_channel.send((String::from(command), String::new()))? }
                     _ => continue
                 }
                 thread::sleep(Duration::from_millis(75));

@@ -1,6 +1,6 @@
 use zilog_z80::cpu::CPU;
 use sdl2::video::Window;
-use std::{fs, error::Error, thread, time::Duration};
+use std::{fs, error::Error, thread, time::Duration, sync::mpsc};
 
 pub struct Machine {
     pub cpu: CPU,
@@ -8,6 +8,7 @@ pub struct Machine {
     pub keyboard: crate::keyboard::Keyboard,
     pub tape: crate::cassette::CassetteReader,
     config: crate::config::Config,
+    cmd_channel: (mpsc::Sender<(String, String)>, mpsc::Receiver<(String, String)>),
 }
 
 impl Machine {
@@ -19,6 +20,7 @@ impl Machine {
             keyboard: crate::keyboard::Keyboard::new(),
             tape: crate::cassette::CassetteReader::new(),
             config,
+            cmd_channel: mpsc::channel(),
         };
         m.cpu.debug.io = m.config.debug.iodevices.unwrap_or(false);
         m.cpu.debug.instr_in = m.config.debug.iodevices.unwrap_or(false);
@@ -26,6 +28,7 @@ impl Machine {
         m.cpu.bus.load_bin(&m.config.memory.rom, 0)?;
         let rom_space = fs::metadata(&m.config.memory.rom)?.len();
         m.cpu.bus.set_romspace(0, (rom_space - 1) as u16);
+        crate::console::launch(m.cmd_channel.0.clone())?;
         Ok(m)
     }
 
@@ -58,6 +61,13 @@ impl Machine {
                 thread::sleep(Duration::from_millis(t.into()));
                 break;
             }
+        }
+        let (command, data) = self.cmd_channel.1.try_recv().unwrap_or_default();
+
+        match command.as_str() {
+            "reset" => { self.cpu.reg.pc = 0;
+            println!("RESET DONE !"); },
+            _ => {},
         }
     }
 }
