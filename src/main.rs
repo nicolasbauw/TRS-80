@@ -29,7 +29,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     if refresh_rate == 50 {
         trs80.cpu.set_slice_duration(20); // Matching a 50 Hz refresh rate
     }
-    trs80.tape.load("bin/invade.cas".into())?;
 
     // SDL loop
     'running: loop {
@@ -56,7 +55,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         trs80.keyboard.update(events, &mut  trs80.cpu.bus);
 
         // Handle console commands
-        trs80.console();
+        trs80.console()?;
 
     }
     Ok(())

@@ -1,6 +1,6 @@
 use zilog_z80::cpu::CPU;
 use sdl2::video::Window;
-use std::{fs, error::Error, thread, time::Duration, sync::mpsc};
+use std::{fs, error::Error, thread, time::Duration, sync::mpsc, path::PathBuf};
 
 pub struct Machine {
     pub cpu: CPU,
@@ -64,19 +64,28 @@ impl Machine {
         }
     }
 
-    pub fn console(&mut self) {
-        let (command, _data) = self.cmd_channel.1.try_recv().unwrap_or_default();
+    pub fn console(&mut self) -> Result<(), Box<dyn Error>> {
+        let (command, data) = self.cmd_channel.1.try_recv().unwrap_or_default();
 
         match command.as_str() {
             "reset" => {
                 self.cpu.reg.pc = 0;
                 println!("RESET DONE !");
             },
-            "rewind" => {
-                self.tape.rewind();
-                println!("TAPE REWOUND !");
+            "tape" => {
+                if data == String::from("rewind") {
+                    self.tape.rewind();
+                    println!("TAPE REWOUND !");
+                    return Ok(());
+                }
+                let mut tape_path: PathBuf = self.config.storage.tape_path.clone();
+                tape_path.push(data);
+                if self.tape.load(tape_path).is_err() {
+                    println!("FILE NOT FOUND !");
+                }
             }
             _ => {},
         }
+        Ok(())
     }
 }
