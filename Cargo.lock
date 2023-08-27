@@ -328,3 +328,5 @@ dependencies = [
 [[package]]
 name = "zilog_z80"
 version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f58d0e648db224e9bf82cd3e1a6c4f23f080a3856bb406952c61e1326b269c5"
