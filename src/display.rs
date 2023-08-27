@@ -10,10 +10,10 @@ pub struct Display {
 }
 
 impl Display {
-    pub fn new(window: Window) -> Result<Display, Box<dyn Error>> {
+    pub fn new(window: Window, config: crate::config::Config) -> Result<Display, Box<dyn Error>> {
         let d = Display {
             canvas: window.into_canvas().accelerated().present_vsync().build()?,
-            config: crate::config::load_config_file()?,
+            config,
         };
         Ok(d)
     }

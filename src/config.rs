@@ -2,7 +2,7 @@ use std::{fs, path::PathBuf};
 use serde_derive::Deserialize;
 use directories::UserDirs;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Config {
     pub display: ScreenConfig,
     pub memory: MemConfig,
@@ -11,7 +11,7 @@ pub struct Config {
     pub debug: Debug,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct ScreenConfig {
     pub width: u32,
     pub height: u32,
@@ -19,25 +19,25 @@ pub struct ScreenConfig {
     pub font_size: u16,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct MemConfig {
     pub rom: String,
     pub ram: u16,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct KeyboardConfig {
     pub repeat_delay: u64,
     pub keypress_timeout: u64,
     pub memclear_delay: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct StorageConfig {
     pub tape_path: PathBuf,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Debug {
     pub iodevices: Option<bool>,
 }

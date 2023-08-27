@@ -24,16 +24,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         .position_centered()
         .build()?;
 
+    // Creating the TRS-80
     let mut trs80  = Machine::new(window)?;
-
-    // Setting up CPU
-    //c.debug.opcode = true;
     if refresh_rate == 50 {
         trs80.cpu.set_slice_duration(20); // Matching a 50 Hz refresh rate
     }
-
     trs80.tape.load("bin/invade.cas".into())?;
 
+    // SDL loop
     'running: loop {
         // CPU + IO loop
         loop {

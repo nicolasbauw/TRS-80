@@ -12,12 +12,13 @@ pub struct Machine {
 
 impl Machine {
     pub fn new(window: Window) -> Result<Machine, Box<dyn Error>> {
+        let config = crate::config::load_config_file()?;
         let mut m = Self {
             cpu: CPU::new(0xFFFF),
-            display: crate::display::Display::new(window)?,
+            display: crate::display::Display::new(window, config.clone())?,
             keyboard: crate::keyboard::Keyboard::new(),
             tape: crate::cassette::CassetteReader::new(),
-            config: crate::config::load_config_file()?,
+            config,
         };
         m.cpu.debug.io = m.config.debug.iodevices.unwrap_or(false);
         m.cpu.debug.instr_in = m.config.debug.iodevices.unwrap_or(false);
