@@ -25,7 +25,7 @@ impl Display {
         self.canvas.present();
     }
 
-    pub fn draw(&mut self, bytes: Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
+    fn draw(&mut self, bytes: Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
         let mut start = 0x0000;
         let mut end = 0x0040;
         let mut line_bytes: Vec<&[u16]> = Vec::new();
