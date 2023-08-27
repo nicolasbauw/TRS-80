@@ -62,11 +62,20 @@ impl Machine {
                 break;
             }
         }
-        let (command, data) = self.cmd_channel.1.try_recv().unwrap_or_default();
+    }
+
+    pub fn console(&mut self) {
+        let (command, _data) = self.cmd_channel.1.try_recv().unwrap_or_default();
 
         match command.as_str() {
-            "reset" => { self.cpu.reg.pc = 0;
-            println!("RESET DONE !"); },
+            "reset" => {
+                self.cpu.reg.pc = 0;
+                println!("RESET DONE !");
+            },
+            "rewind" => {
+                self.tape.rewind();
+                println!("TAPE REWOUND !");
+            }
             _ => {},
         }
     }
