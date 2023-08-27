@@ -2,7 +2,7 @@ use sdl2::{
     event::Event,
     keyboard::Keycode,
 };
-use std::{error::Error, thread, time::Duration};
+use std::error::Error;
 mod display;
 mod keyboard;
 mod cassette;
@@ -33,36 +33,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // SDL loop
     'running: loop {
-        // CPU + IO loop
-        loop {
-            let opcode = trs80.cpu.bus.read_byte(trs80.cpu.reg.pc);
-            match opcode {
-                0xdb => {
-                    let port = trs80.cpu.bus.read_byte(trs80.cpu.reg.pc + 1);
-                    if let Some(true) = config.debug.iodevices {
-                        println!("IN on port {}", port);
-                    }
-                    // cassette reader port ?
-                    if port == 0xFF {
-                        trs80.cpu.reg.a = trs80.tape.read();
-                    }
-                }
-                0xd3 => {
-                    let port = trs80.cpu.bus.read_byte(trs80.cpu.reg.pc + 1);
-                    if let Some(true) = config.debug.iodevices {
-                        println!("OUT {} on port {}", trs80.cpu.reg.a, port);
-                    }
-                    if port == 0xFF {}
-                }
-                _ => {}
-            }
-
-            // executes slice_max_cycles number of cycles
-            if let Some(t) = trs80.cpu.execute_timed() {
-                thread::sleep(Duration::from_millis(t.into()));
-                break;
-            }
-        }
+        // CPU loop
+        trs80.cpu_loop();
         
         // Update display
         trs80.display.update(&mut trs80.cpu.bus);

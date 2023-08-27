@@ -1,6 +1,6 @@
 use zilog_z80::cpu::CPU;
 use sdl2::video::Window;
-use std::{fs, error::Error};
+use std::{fs, error::Error, thread, time::Duration};
 
 pub struct Machine {
     pub cpu: CPU,
@@ -27,5 +27,37 @@ impl Machine {
         let rom_space = fs::metadata(&m.config.memory.rom)?.len();
         m.cpu.bus.set_romspace(0, (rom_space - 1) as u16);
         Ok(m)
+    }
+
+    pub fn cpu_loop(&mut self) {
+        loop {
+            let opcode = self.cpu.bus.read_byte(self.cpu.reg.pc);
+            match opcode {
+                0xdb => {
+                    let port = self.cpu.bus.read_byte(self.cpu.reg.pc + 1);
+                    if let Some(true) = self.config.debug.iodevices {
+                        println!("IN on port {}", port);
+                    }
+                    // cassette reader port ?
+                    if port == 0xFF {
+                        self.cpu.reg.a = self.tape.read();
+                    }
+                }
+                0xd3 => {
+                    let port = self.cpu.bus.read_byte(self.cpu.reg.pc + 1);
+                    if let Some(true) = self.config.debug.iodevices {
+                        println!("OUT {} on port {}", self.cpu.reg.a, port);
+                    }
+                    if port == 0xFF {}
+                }
+                _ => {}
+            }
+
+            // executes slice_max_cycles number of cycles
+            if let Some(t) = self.cpu.execute_timed() {
+                thread::sleep(Duration::from_millis(t.into()));
+                break;
+            }
+        }
     }
 }
