@@ -1,5 +1,5 @@
-use fs_extra::{copy_items, dir::create};
 use directories::UserDirs;
+use fs_extra::{copy_items, dir::create};
 
 fn main() {
     if let Some(user_dirs) = UserDirs::new() {
@@ -19,6 +19,6 @@ fn main() {
         let mut from_paths = Vec::new();
         from_paths.push("config/config.toml");
         println!("Copying {:#?} to {:#?}", from_paths, dest);
-        copy_items(&from_paths, dest, &options).unwrap(); 
+        copy_items(&from_paths, dest, &options).unwrap();
     }
- }
+}

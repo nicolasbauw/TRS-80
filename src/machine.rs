@@ -1,6 +1,6 @@
-use zilog_z80::cpu::CPU;
 use sdl2::video::Window;
-use std::{fs, error::Error, thread, time::Duration, sync::mpsc, path::PathBuf};
+use std::{error::Error, fs, path::PathBuf, sync::mpsc, thread, time::Duration};
+use zilog_z80::cpu::CPU;
 
 pub struct Machine {
     pub cpu: CPU,
@@ -8,7 +8,10 @@ pub struct Machine {
     pub keyboard: crate::keyboard::Keyboard,
     pub tape: crate::cassette::CassetteReader,
     config: crate::config::Config,
-    cmd_channel: (mpsc::Sender<(String, String)>, mpsc::Receiver<(String, String)>),
+    cmd_channel: (
+        mpsc::Sender<(String, String)>,
+        mpsc::Receiver<(String, String)>,
+    ),
 }
 
 impl Machine {
@@ -71,7 +74,7 @@ impl Machine {
             "reset" => {
                 self.cpu.reg.pc = 0;
                 println!("RESET DONE !");
-            },
+            }
             "tape" => {
                 if data == *"rewind" {
                     self.tape.rewind();
@@ -84,7 +87,7 @@ impl Machine {
                     println!("FILE NOT FOUND !");
                 }
             }
-            _ => {},
+            _ => {}
         }
         Ok(())
     }

@@ -1,14 +1,11 @@
-use sdl2::{
-    event::Event,
-    keyboard::Keycode,
-};
+use sdl2::{event::Event, keyboard::Keycode};
 use std::error::Error;
-mod display;
-mod keyboard;
 mod cassette;
 mod config;
-mod machine;
 mod console;
+mod display;
+mod keyboard;
+mod machine;
 use machine::Machine;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -25,7 +22,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .build()?;
 
     // Creating the TRS-80
-    let mut trs80  = Machine::new(window)?;
+    let mut trs80 = Machine::new(window)?;
     if refresh_rate == 50 {
         trs80.cpu.set_slice_duration(20); // Matching a 50 Hz refresh rate
     }
@@ -49,14 +46,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         // Handle SDL keyboard events (keyboard MMIO peripheral)
-        trs80.keyboard.update(events, &mut  trs80.cpu.bus);
+        trs80.keyboard.update(events, &mut trs80.cpu.bus);
 
         // Update display
         trs80.display.update(&mut trs80.cpu.bus);
 
         // Handle console commands
         trs80.console().unwrap_or_default();
-
     }
     Ok(())
 }

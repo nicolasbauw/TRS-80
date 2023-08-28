@@ -1,4 +1,4 @@
-use std::{io, fs::File, io::prelude::*, path::PathBuf};
+use std::{fs::File, io, io::prelude::*, path::PathBuf};
 //use crate::config;
 
 pub struct CassetteReader {
@@ -10,9 +10,9 @@ pub struct CassetteReader {
 impl CassetteReader {
     pub fn new() -> Self {
         Self {
-        inserted_tape: Vec::new(),
-        serialized_tape: Vec::new(),
-        tape_position: 0,
+            inserted_tape: Vec::new(),
+            serialized_tape: Vec::new(),
+            tape_position: 0,
         }
     }
 
@@ -20,8 +20,8 @@ impl CassetteReader {
         let mut bits = Vec::new();
         for byte in self.inserted_tape.iter() {
             for bit in (0..=7).rev() {
-                bits.push(1);                                   // Sync pulse
-                bits.push(((byte & (1 << bit)) != 0) as u8);    // Data bit
+                bits.push(1); // Sync pulse
+                bits.push(((byte & (1 << bit)) != 0) as u8); // Data bit
             }
         }
         bits
@@ -42,8 +42,8 @@ impl CassetteReader {
                 let r = self.serialized_tape[self.tape_position] << 7;
                 self.tape_position += 1;
                 r
-            },
-            true => { 0 }
+            }
+            true => 0,
         }
     }
 

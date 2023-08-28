@@ -1,8 +1,8 @@
-use std::error::Error;
-use sdl2::rect::Rect;
-use sdl2::video::Window;
 use sdl2::pixels::Color;
+use sdl2::rect::Rect;
 use sdl2::render::Canvas;
+use sdl2::video::Window;
+use std::error::Error;
 
 pub struct Display {
     pub canvas: Canvas<sdl2::video::Window>,
@@ -36,7 +36,7 @@ impl Display {
             let d = (0xE0 << 8) | u16::from(*c);
             utf_data.push(d);
         }
-        
+
         // Cutting the video memory into lines of bytes
         for _ in 0..=15 {
             line_bytes.push(&utf_data[start..end]);
@@ -51,7 +51,8 @@ impl Display {
         }
 
         let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
-        let font = ttf_context.load_font(&self.config.display.font, self.config.display.font_size)?;
+        let font =
+            ttf_context.load_font(&self.config.display.font, self.config.display.font_size)?;
 
         let texture_creator = self.canvas.texture_creator();
         let mut y = 0;
@@ -61,10 +62,14 @@ impl Display {
                 .blended(Color::RGBA(219, 220, 250, 255))
                 .map_err(|e| e.to_string())?;
 
-            let r = Rect::new(0, y, self.config.display.width, self.config.display.height/16);
-            y += (self.config.display.height as i32)/16;
-            let text_tex = texture_creator
-                    .create_texture_from_surface(surf)?;
+            let r = Rect::new(
+                0,
+                y,
+                self.config.display.width,
+                self.config.display.height / 16,
+            );
+            y += (self.config.display.height as i32) / 16;
+            let text_tex = texture_creator.create_texture_from_surface(surf)?;
             self.canvas.copy(&text_tex, None, Some(r))?;
         }
         Ok(())

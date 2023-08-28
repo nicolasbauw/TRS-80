@@ -11,7 +11,7 @@ pub struct Keyboard {
 impl Keyboard {
     pub fn new() -> Keyboard {
         Keyboard {
-            last:0,
+            last: 0,
             shift: false,
             old_keys: HashSet::new(),
         }
@@ -142,7 +142,7 @@ impl Keyboard {
 
         // Some routines check this address to check all the columns
         bus.write_byte(0x387f, 1);
-        
+
         // Returning the address to clear and the status of the shift key
         self.last = msg.0;
         self.shift = shift
