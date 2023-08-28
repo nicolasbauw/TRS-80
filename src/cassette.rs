@@ -31,6 +31,7 @@ impl CassetteReader {
         let mut f = File::open(filename)?;
         f.read_to_end(&mut self.inserted_tape)?;
         self.serialized_tape = self.serialize();
+        self.tape_position = 0;
         Ok(())
     }
 
