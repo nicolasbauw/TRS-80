@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Creating the TRS-80
     let mut trs80 = Machine::new(window)?;
     if refresh_rate == 50 {
-        trs80.cpu.set_slice_duration(20); // Matching a 50 Hz refresh rate
+        trs80.refresh_rate_50();
     }
 
     // SDL loop

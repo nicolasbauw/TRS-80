@@ -67,6 +67,11 @@ impl Machine {
         }
     }
 
+    pub fn refresh_rate_50(&mut self) {
+        self.cpu.set_slice_duration(20); // Matching a 50 Hz refresh rate
+        self.cpu.set_freq(1.77); // Adjusting slice_max_cycles to new refresh rate
+    }
+
     pub fn console(&mut self) -> Result<(), Box<dyn Error>> {
         let (command, data) = self.cmd_channel.1.try_recv()?;
 
