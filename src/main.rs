@@ -23,9 +23,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Creating the TRS-80
     let mut trs80 = Machine::new(window)?;
-    if refresh_rate == 50 {
-        trs80.refresh_rate_50();
-    }
+    trs80.set_timings(refresh_rate);
 
     // SDL loop
     'running: loop {

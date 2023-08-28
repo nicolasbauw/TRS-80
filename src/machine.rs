@@ -27,7 +27,6 @@ impl Machine {
         };
         m.cpu.debug.io = m.config.debug.iodevices.unwrap_or(false);
         m.cpu.debug.instr_in = m.config.debug.iodevices.unwrap_or(false);
-        m.cpu.set_freq(1.77); // Model 1 : 1.77 MHz
         m.cpu.bus.load_bin(&m.config.memory.rom, 0)?;
         let rom_space = fs::metadata(&m.config.memory.rom)?.len();
         m.cpu.bus.set_romspace(0, (rom_space - 1) as u16);
@@ -67,9 +66,10 @@ impl Machine {
         }
     }
 
-    pub fn refresh_rate_50(&mut self) {
-        self.cpu.set_slice_duration(20); // Matching a 50 Hz refresh rate
-        self.cpu.set_freq(1.77); // Adjusting slice_max_cycles to new refresh rate
+    pub fn set_timings(&mut self, refresh_rate: i32) {
+        let s: f32= (1.0/(refresh_rate as f32))*1000.0;
+        self.cpu.set_slice_duration(s as u32); // Adjusting slice_duration to detected refresh rate
+        self.cpu.set_freq(1.77); // Adjusting slice_max_cycles to detected refresh rate
     }
 
     pub fn console(&mut self) -> Result<(), Box<dyn Error>> {
