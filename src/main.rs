@@ -51,11 +51,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         // Handle SDL keyboard events (keyboard MMIO peripheral)
         trs80.keyboard.update(events, &mut  trs80.cpu.bus);
 
-        // Handle console commands
-        trs80.console().unwrap_or_default();
-
         // Update display
         trs80.display.update(&mut trs80.cpu.bus);
+
+        // Handle console commands
+        trs80.console().unwrap_or_default();
 
     }
     Ok(())
