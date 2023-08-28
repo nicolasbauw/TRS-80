@@ -8,10 +8,11 @@ You will need a ROM, and the [AnotherMansTreasureMIB64C2X3Y.ttf](https://www.kre
 ![Screenshot](assets/TRuSt-80.png)
 
 You can customize the RAM, ROM and resolution, among other things, in the config.toml file.
-The "tape rewind" command is used to "rewind" the tape.
-The "reset" command reboots the TRS-80.
 The F12 key quits the emulator.
-The "tape" command followed by a filename is used to "insert" a tape:
+In the console, the `reset` command reboots the TRS-80.
+The `tape rewind` command is used to "rewind" the tape.
+The `tape` command followed by a filename is used to "insert" a tape:
+
 ```
 tape seawar4k.cas
 ```
