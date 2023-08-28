@@ -11,10 +11,5 @@ ram = 0xFFFF
 [storage]
 tape_path = "bin/"
 
-[keyboard]
-repeat_delay = 120
-keypress_timeout = 8
-memclear_delay = 6
-
 [debug]
 iodevices = false

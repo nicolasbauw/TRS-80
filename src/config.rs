@@ -7,7 +7,6 @@ pub struct Config {
     pub display: ScreenConfig,
     pub memory: MemConfig,
     pub storage: StorageConfig,
-    pub keyboard: KeyboardConfig,
     pub debug: Debug,
 }
 
@@ -23,13 +22,6 @@ pub struct ScreenConfig {
 pub struct MemConfig {
     pub rom: String,
     pub ram: u16,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct KeyboardConfig {
-    pub repeat_delay: u64,
-    pub keypress_timeout: u64,
-    pub memclear_delay: u64,
 }
 
 #[derive(Debug, Deserialize, Clone)]
