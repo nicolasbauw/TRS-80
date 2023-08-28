@@ -55,7 +55,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         trs80.keyboard.update(events, &mut  trs80.cpu.bus);
 
         // Handle console commands
-        trs80.console()?;
+        trs80.console().unwrap_or_default();
 
     }
     Ok(())

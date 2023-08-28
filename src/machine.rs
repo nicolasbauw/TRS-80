@@ -65,7 +65,7 @@ impl Machine {
     }
 
     pub fn console(&mut self) -> Result<(), Box<dyn Error>> {
-        let (command, data) = self.cmd_channel.1.try_recv().unwrap_or_default();
+        let (command, data) = self.cmd_channel.1.try_recv()?;
 
         match command.as_str() {
             "reset" => {
