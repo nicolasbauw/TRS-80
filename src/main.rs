@@ -34,9 +34,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     'running: loop {
         // CPU loop
         trs80.cpu_loop();
-        
-        // Update display
-        trs80.display.update(&mut trs80.cpu.bus);
 
         // SDL events
         let mut events = sdl_context.event_pump()?;
@@ -56,6 +53,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         // Handle console commands
         trs80.console().unwrap_or_default();
+
+        // Update display
+        trs80.display.update(&mut trs80.cpu.bus);
 
     }
     Ok(())
