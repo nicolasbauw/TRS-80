@@ -67,7 +67,7 @@ impl Machine {
     }
 
     pub fn set_timings(&mut self, refresh_rate: i32) {
-        let s: f32= (1.0/(refresh_rate as f32))*1000.0;
+        let s: f32 = (1.0 / (refresh_rate as f32)) * 1000.0;
         self.cpu.set_slice_duration(s as u32); // Adjusting slice_duration to detected refresh rate
         self.cpu.set_freq(1.77); // Adjusting slice_max_cycles to detected refresh rate
     }
