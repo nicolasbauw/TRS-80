@@ -83,8 +83,13 @@ impl Machine {
                 }
                 let mut tape_path: PathBuf = self.config.storage.tape_path.clone();
                 tape_path.push(data);
-                if self.tape.load(tape_path).is_err() {
-                    println!("FILE NOT FOUND !");
+                match self.tape.load(tape_path) {
+                    Ok(()) => {
+                        println!("TAPE LOADED !")
+                    }
+                    Err(_) => {
+                        println!("FILE NOT FOUND !")
+                    }
                 }
             }
             _ => {}
