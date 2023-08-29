@@ -26,11 +26,11 @@ impl From<std::num::ParseIntError> for ConversionError {
     }
 }
 
-pub trait StringToUnsigned {
+pub trait HexStringToUnsigned {
     fn to_u16(&self) -> Result<u16, ConversionError>;
 }
 
-impl StringToUnsigned for String {
+impl HexStringToUnsigned for String {
 fn to_u16(&self) -> Result<u16, ConversionError> {
     if self.starts_with("0x") {
         let a = u16::from_str_radix(self.strip_prefix("0x").unwrap(), 16)?;
