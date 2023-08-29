@@ -98,10 +98,14 @@ impl Machine {
                         println!("FILE NOT FOUND !")
                     }
                 }
-            },
+            }
             "d" => {
-                let d = self.cpu.dasm_1byte(data.to_u16()?);
-                println!("{}", d);
+                let a = data.to_u16()?;
+                let end = a+20;
+                for address in a..end {
+                    let d = self.cpu.dasm_1byte(address);
+                    println!("{:04X}    {}",address, d);
+                }
             }
             _ => {}
         }
