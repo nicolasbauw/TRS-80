@@ -6,6 +6,7 @@ mod console;
 mod display;
 mod keyboard;
 mod machine;
+mod monitor;
 use machine::Machine;
 
 fn main() -> Result<(), Box<dyn Error>> {

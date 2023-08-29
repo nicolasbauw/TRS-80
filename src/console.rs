@@ -31,6 +31,14 @@ pub fn launch(
                             println!("No tape filename !")
                         }
                     },
+                    "d" => match args.peekable().peek() {
+                        Some(address) => {
+                            cmd_channel.send((String::from(command), address.to_string()))?
+                        }
+                        None => {
+                            println!("No address !")
+                        }
+                    },
                     _ => cmd_channel.send((String::from(command), String::new()))?,
                 }
                 thread::sleep(Duration::from_millis(75));

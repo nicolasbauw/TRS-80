@@ -96,6 +96,10 @@ impl Machine {
                         println!("FILE NOT FOUND !")
                     }
                 }
+            },
+            "d" => {
+                let d = self.cpu.dasm_1byte(crate::monitor::string_to_u16(data)?);
+                println!("{}", d);
             }
             _ => {}
         }
