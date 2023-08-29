@@ -12,7 +12,7 @@ impl Error for ConversionError {}
 
 impl fmt::Display for ConversionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("Base64 error : ")?;
+        f.write_str("ConversionError : ")?;
         f.write_str(match self {
             ConversionError::InvalidAddressFormat => "String does not start with 0x",
             ConversionError::ParseIntError => "Error while parsing int",
