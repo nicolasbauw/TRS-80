@@ -100,12 +100,11 @@ impl Machine {
                 }
             }
             "d" => {
-                let a = data.to_u16()?;
-                let start = a;
-                let end = a.saturating_add(20);
-                for address in start..=end {
-                    let d = self.cpu.dasm_1byte(address);
-                    println!("{:04X}    {}", address, d);
+                let mut a = data.to_u16()?;
+                for _ in 0..=20 {
+                    let d = self.cpu.dasm_1byte(a);
+                    println!("{:04X}    {}", a, d.0);
+                    a += (d.1) as u16;
                 }
             }
             _ => {}
