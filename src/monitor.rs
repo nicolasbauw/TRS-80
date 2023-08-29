@@ -1,4 +1,4 @@
-use std::{fmt, error::Error};
+use std::{error::Error, fmt};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ConversionError {
@@ -31,10 +31,13 @@ pub trait HexStringToUnsigned {
 }
 
 impl HexStringToUnsigned for String {
-fn to_u16(&self) -> Result<u16, ConversionError> {
-    if self.starts_with("0x") {
-        let a = u16::from_str_radix(self.strip_prefix("0x").unwrap(), 16)?;
-        return Ok(a);
-    } else { return Err(ConversionError::InvalidAddressFormat) }
-}
+    fn to_u16(&self) -> Result<u16, ConversionError> {
+        match self.strip_prefix("0x") {
+            Some(a) => {
+                let a = u16::from_str_radix(a, 16)?;
+                Ok(a)
+            }
+            None => Err(ConversionError::InvalidAddressFormat),
+        }
+    }
 }
