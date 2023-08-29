@@ -19,7 +19,7 @@ impl Machine {
         let config = crate::config::load_config_file()?;
         let mut m = Self {
             cpu: CPU::new(0xFFFF),
-            display: crate::display::Display::new(window, config.clone())?,
+            display: crate::display::Display::new(window)?,
             keyboard: crate::keyboard::Keyboard::new(),
             tape: crate::cassette::CassetteReader::new(),
             config,
