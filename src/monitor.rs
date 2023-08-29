@@ -26,9 +26,15 @@ impl From<std::num::ParseIntError> for ConversionError {
     }
 }
 
-pub fn string_to_u16(s: String) -> Result<u16, ConversionError> {
-    if s.starts_with("0x") {
-        let a = u16::from_str_radix(&s.strip_prefix("0x").unwrap(), 16)?;
+pub trait StringToUnsigned {
+    fn to_u16(&self) -> Result<u16, ConversionError>;
+}
+
+impl StringToUnsigned for String {
+fn to_u16(&self) -> Result<u16, ConversionError> {
+    if self.starts_with("0x") {
+        let a = u16::from_str_radix(self.strip_prefix("0x").unwrap(), 16)?;
         return Ok(a);
     } else { return Err(ConversionError::InvalidAddressFormat) }
+}
 }

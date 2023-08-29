@@ -2,6 +2,8 @@ use sdl2::video::Window;
 use std::{error::Error, fs, path::PathBuf, sync::mpsc, thread, time::Duration};
 use zilog_z80::cpu::CPU;
 
+use crate::monitor::StringToUnsigned;
+
 pub struct Machine {
     pub cpu: CPU,
     pub display: crate::display::Display,
@@ -98,7 +100,7 @@ impl Machine {
                 }
             },
             "d" => {
-                let d = self.cpu.dasm_1byte(crate::monitor::string_to_u16(data)?);
+                let d = self.cpu.dasm_1byte(data.to_u16()?);
                 println!("{}", d);
             }
             _ => {}
