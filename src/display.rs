@@ -18,14 +18,14 @@ impl Display {
         Ok(d)
     }
 
-    pub fn update(&mut self, bus: &mut zilog_z80::bus::Bus) {
-        let vram = bus.read_mem_slice(0x3C00, 0x4000);
+    pub fn update(&mut self, bus: &zilog_z80::bus::Bus) {
         self.canvas.clear();
-        self.draw(vram).unwrap();
+        self.draw(bus).unwrap();
         self.canvas.present();
     }
 
-    fn draw(&mut self, bytes: Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
+    fn draw(&mut self, bus: &zilog_z80::bus::Bus) -> Result<(), Box<dyn std::error::Error>> {
+        let bytes = bus.read_mem_slice(0x3C00, 0x4000);
         let mut start = 0x0000;
         let mut end = 0x0040;
         let mut line_bytes: Vec<&[u16]> = Vec::new();
