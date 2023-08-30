@@ -1,5 +1,5 @@
 use sdl2::video::Window;
-use std::{error::Error, fs, path::PathBuf, sync::mpsc, thread, time::Duration};
+use std::{error::Error, fs, path::PathBuf, sync::mpsc, thread, time::Duration, collections::HashSet};
 use zilog_z80::cpu::CPU;
 
 use crate::hexconversion::HexStringToUnsigned;
@@ -14,6 +14,7 @@ pub struct Machine {
         mpsc::Sender<(String, String, String)>,
         mpsc::Receiver<(String, String, String)>,
     ),
+    breakpoint: HashSet<u16>,
 }
 
 impl Machine {
@@ -26,6 +27,7 @@ impl Machine {
             tape: crate::cassette::CassetteReader::new(),
             config,
             cmd_channel: mpsc::channel(),
+            breakpoint: HashSet::new(),
         };
         m.cpu.debug.io = m.config.debug.iodevices.unwrap_or(false);
         m.cpu.debug.instr_in = m.config.debug.iodevices.unwrap_or(false);
@@ -38,7 +40,8 @@ impl Machine {
 
     pub fn cpu_loop(&mut self) {
         loop {
-            let opcode = self.cpu.bus.read_byte(self.cpu.reg.pc);
+            let pc = self.cpu.reg.pc;
+            let opcode = self.cpu.bus.read_byte(pc);
             match opcode {
                 0xdb => {
                     let port = self.cpu.bus.read_byte(self.cpu.reg.pc + 1);
@@ -64,6 +67,12 @@ impl Machine {
             if let Some(t) = self.cpu.execute_timed() {
                 thread::sleep(Duration::from_millis(t.into()));
                 break;
+            }
+
+            if !self.breakpoint.is_empty() {
+                if self.breakpoint.contains(&self.cpu.reg.pc) {
+                    return
+                }
             }
         }
     }
@@ -118,6 +127,10 @@ impl Machine {
             "j" => {
                 let a = arg.to_u16()?;
                 self.cpu.reg.pc = a;
+            },
+            "b" => {
+                let a = arg.to_u16()?;
+                self.breakpoint.insert(a);
             }
             _ => {}
         }
