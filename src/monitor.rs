@@ -28,14 +28,24 @@ impl From<std::num::ParseIntError> for ConversionError {
 
 pub trait HexStringToUnsigned {
     fn to_u16(&self) -> Result<u16, ConversionError>;
+    fn to_u8(&self) -> Result<u8, ConversionError>;
 }
 
 impl HexStringToUnsigned for String {
     fn to_u16(&self) -> Result<u16, ConversionError> {
         match self.strip_prefix("0x") {
             Some(a) => {
-                let a = u16::from_str_radix(a, 16)?;
-                Ok(a)
+                let r = u16::from_str_radix(a, 16)?;
+                Ok(r)
+            }
+            None => Err(ConversionError::InvalidAddressFormat),
+        }
+    }
+    fn to_u8(&self) -> Result<u8, ConversionError> {
+        match self.strip_prefix("0x") {
+            Some(a) => {
+                let r = u8::from_str_radix(a, 16)?;
+                Ok(r)
             }
             None => Err(ConversionError::InvalidAddressFormat),
         }
