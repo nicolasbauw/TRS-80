@@ -11,8 +11,8 @@ pub struct Machine {
     pub tape: crate::cassette::CassetteReader,
     config: crate::config::Config,
     cmd_channel: (
-        mpsc::Sender<(String, String)>,
-        mpsc::Receiver<(String, String)>,
+        mpsc::Sender<(String, String, String)>,
+        mpsc::Receiver<(String, String, String)>,
     ),
 }
 
@@ -75,7 +75,7 @@ impl Machine {
     }
 
     pub fn console(&mut self) -> Result<(), Box<dyn Error>> {
-        let (command, data) = self.cmd_channel.1.try_recv()?;
+        let (command, arg, arg2 ) = self.cmd_channel.1.try_recv()?;
 
         match command.as_str() {
             "reset" => {
@@ -83,13 +83,13 @@ impl Machine {
                 println!("RESET DONE !");
             }
             "tape" => {
-                if data == *"rewind" {
+                if arg == *"rewind" {
                     self.tape.rewind();
                     println!("TAPE REWOUND !");
                     return Ok(());
                 }
                 let mut tape_path: PathBuf = self.config.storage.tape_path.clone();
-                tape_path.push(data);
+                tape_path.push(arg);
                 match self.tape.load(tape_path) {
                     Ok(()) => {
                         println!("TAPE LOADED !")
@@ -100,11 +100,19 @@ impl Machine {
                 }
             }
             "d" => {
-                let mut a = data.to_u16()?;
+                let mut a = arg.to_u16()?;
                 for _ in 0..=20 {
                     let d = self.cpu.dasm_1byte(a);
                     println!("{:04X}    {}", a, d.0);
                     a += (d.1) as u16;
+                }
+            },
+            "m" => {
+                let a = arg.to_u16()?;
+                println!("{:04X}    {:02X}", a, self.cpu.bus.read_byte(a));
+                if !arg2.is_empty() {
+                    self.cpu.bus.write_byte(a, arg2.to_u8()?);
+                    println!("{:04X} -> {:02X}", a, self.cpu.bus.read_byte(a));
                 }
             }
             _ => {}
