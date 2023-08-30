@@ -2,7 +2,7 @@ use sdl2::video::Window;
 use std::{error::Error, fs, path::PathBuf, sync::mpsc, thread, time::Duration};
 use zilog_z80::cpu::CPU;
 
-use crate::monitor::HexStringToUnsigned;
+use crate::hexconversion::HexStringToUnsigned;
 
 pub struct Machine {
     pub cpu: CPU,

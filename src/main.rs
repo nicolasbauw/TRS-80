@@ -6,7 +6,7 @@ mod console;
 mod display;
 mod keyboard;
 mod machine;
-mod monitor;
+mod hexconversion;
 use machine::Machine;
 
 fn main() -> Result<(), Box<dyn Error>> {
