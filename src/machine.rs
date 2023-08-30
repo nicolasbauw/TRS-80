@@ -114,6 +114,10 @@ impl Machine {
                     self.cpu.bus.write_byte(a, arg2.to_u8()?);
                     println!("{:04X} -> {:02X}", a, self.cpu.bus.read_byte(a));
                 }
+            },
+            "j" => {
+                let a = arg.to_u16()?;
+                self.cpu.reg.pc = a;
             }
             _ => {}
         }
