@@ -17,11 +17,11 @@ pub fn launch(
                 };
 
                 let mut parts = input.split_whitespace();
-                let command = parts.next();
-                let arg = parts.next();
-                let arg2 = parts.next();
+                let command = parts.next().unwrap_or_default().to_string();
+                let arg = parts.next().unwrap_or_default().to_string();
+                let arg2 = parts.next().unwrap_or_default().to_string();
 
-                cmd_channel.send((command.unwrap_or_default().to_string(), arg.unwrap_or_default().to_string(), arg2.unwrap_or_default().to_string()))?;
+                cmd_channel.send((command, arg, arg2))?;
                 thread::sleep(Duration::from_millis(75));
             }
         },
