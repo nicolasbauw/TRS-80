@@ -2,8 +2,10 @@ use std::{error::Error, fmt};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ConversionError {
-    // String does not start with 0x
-    InvalidAddressFormat,
+    // Word string does not start with 0x
+    InvalidWordFormat,
+    // Byte string does not start with 0x
+    InvalidByteFormat,
     // Error while parsing int
     ParseIntError,
 }
@@ -14,8 +16,9 @@ impl fmt::Display for ConversionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("ConversionError : ")?;
         f.write_str(match self {
-            ConversionError::InvalidAddressFormat => "String does not start with 0x",
-            ConversionError::ParseIntError => "Error while parsing int",
+            ConversionError::InvalidWordFormat => "Word string does not start with 0x",
+            ConversionError::InvalidByteFormat => "Byte string does not start with 0x",
+            ConversionError::ParseIntError => "Error while parsing from_str_radix",
         })
     }
 }
@@ -38,7 +41,7 @@ impl HexStringToUnsigned for String {
                 let r = u16::from_str_radix(a, 16)?;
                 Ok(r)
             }
-            None => Err(ConversionError::InvalidAddressFormat),
+            None => Err(ConversionError::InvalidWordFormat),
         }
     }
     fn to_u8(&self) -> Result<u8, ConversionError> {
@@ -47,7 +50,7 @@ impl HexStringToUnsigned for String {
                 let r = u8::from_str_radix(a, 16)?;
                 Ok(r)
             }
-            None => Err(ConversionError::InvalidAddressFormat),
+            None => Err(ConversionError::InvalidByteFormat),
         }
     }
 }
