@@ -72,10 +72,9 @@ impl Machine {
                 break;
             }
 
-            if !self.breakpoints.is_empty() {
-                if self.breakpoints.contains(&self.cpu.reg.pc) {
-                    self.running = false
-                }
+            if self.breakpoints.is_empty() { continue }
+            if self.breakpoints.contains(&self.cpu.reg.pc) {
+                self.running = false
             }
         }
     }
@@ -92,6 +91,7 @@ impl Machine {
         match command.as_str() {
             "reset" => {
                 self.cpu.reg.pc = 0;
+                self.running = true;
                 println!("RESET DONE !");
             }
             "tape" => {
