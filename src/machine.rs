@@ -150,7 +150,10 @@ impl Machine {
             },
             "g" => {
                 self.running = true;
-            }
+            },
+            "r" => {
+                print!("PC :{:#06X}\tSP : {:#06X}\nS : {}\tZ : {}\tH : {}\tP : {}\tN : {}\tC : {}\nB : {:#04X}\tC : {:#04X}\nD : {:#04X}\tE : {:#04X}\nH : {:#04X}\tL : {:#04X}\nA : {:#04X}\t(SP) : {:#06X}\n", self.cpu.reg.pc, self.cpu.reg.sp, self.cpu.reg.flags.s as i32, self.cpu.reg.flags.z as i32, self.cpu.reg.flags.h as i32, self.cpu.reg.flags.p as i32, self.cpu.reg.flags.n as i32, self.cpu.reg.flags.c as i32, self.cpu.reg.b, self.cpu.reg.c, self.cpu.reg.d, self.cpu.reg.e, self.cpu.reg.h, self.cpu.reg.l, self.cpu.reg.a, self.cpu.bus.read_word(self.cpu.reg.sp))
+            },
             _ => {}
         }
         Ok(())
