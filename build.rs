@@ -16,8 +16,7 @@ fn main() {
         create(&dest, true).unwrap();
 
         // Copy teletype/config.toml to home_dir/.config/teletype/config.toml
-        let mut from_paths = Vec::new();
-        from_paths.push("config/config.toml");
+        let from_paths = vec!["config/config.toml"];
         println!("Copying {:#?} to {:#?}", from_paths, dest);
         copy_items(&from_paths, dest, &options).unwrap();
     }
