@@ -132,12 +132,20 @@ impl Machine {
                 self.cpu.reg.pc = a;
             },
             "b" => {
-                let a = arg.to_u16()?;
+                let Ok(a) = arg.to_u16() else {
+                    for b in &self.breakpoints {
+                        println!("{:#06X}", b);
+                    }
+                    return Ok(()); 
+                };
                 self.breakpoints.insert(a);
+                println!("New breakpoint at {:#06X}", a);
             },
             "f" => {
                 let a = arg.to_u16()?;
-                self.breakpoints.remove(&a);
+                if self.breakpoints.remove(&a) {
+                    println!("Breakpoint at {:#06X} removed", a);
+                }
             },
             "g" => {
                 self.running = true;
