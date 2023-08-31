@@ -6,6 +6,7 @@ use std::error::Error;
 
 pub struct Display {
     pub canvas: Canvas<sdl2::video::Window>,
+    ttf_context: sdl2::ttf::Sdl2TtfContext,
     config: crate::config::Config,
 }
 
@@ -14,6 +15,7 @@ impl Display {
         let config = crate::config::load_config_file()?;
         let d = Display {
             canvas: window.into_canvas().accelerated().present_vsync().build()?,
+            ttf_context: sdl2::ttf::init().map_err(|e| e.to_string())?,
             config,
         };
         Ok(d)
@@ -51,9 +53,9 @@ impl Display {
             s.push(String::from_utf16_lossy(line));
         }
 
-        let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
-        let font =
-            ttf_context.load_font(&self.config.display.font, self.config.display.font_size)?;
+        let font = self
+            .ttf_context
+            .load_font(&self.config.display.font, self.config.display.font_size)?;
 
         let texture_creator = self.canvas.texture_creator();
         let mut y = 0;
