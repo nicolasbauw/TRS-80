@@ -133,6 +133,7 @@ impl Machine {
             },
             "b" => {
                 let Ok(a) = arg.to_u16() else {
+                    if self.breakpoints.is_empty() { println!("No breakpoints !") }
                     for b in &self.breakpoints {
                         println!("{:#06X}", b);
                     }
