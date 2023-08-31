@@ -14,7 +14,8 @@ pub struct Machine {
         mpsc::Sender<(String, String, String)>,
         mpsc::Receiver<(String, String, String)>,
     ),
-    breakpoint: HashSet<u16>,
+    breakpoints: HashSet<u16>,
+    running: bool,
 }
 
 impl Machine {
@@ -27,7 +28,8 @@ impl Machine {
             tape: crate::cassette::CassetteReader::new(),
             config,
             cmd_channel: mpsc::channel(),
-            breakpoint: HashSet::new(),
+            breakpoints: HashSet::new(),
+            running: true,
         };
         m.cpu.debug.io = m.config.debug.iodevices.unwrap_or(false);
         m.cpu.debug.instr_in = m.config.debug.iodevices.unwrap_or(false);
@@ -40,6 +42,7 @@ impl Machine {
 
     pub fn cpu_loop(&mut self) {
         loop {
+            if !self.running { return }
             let pc = self.cpu.reg.pc;
             let opcode = self.cpu.bus.read_byte(pc);
             match opcode {
@@ -69,9 +72,9 @@ impl Machine {
                 break;
             }
 
-            if !self.breakpoint.is_empty() {
-                if self.breakpoint.contains(&self.cpu.reg.pc) {
-                    return
+            if !self.breakpoints.is_empty() {
+                if self.breakpoints.contains(&self.cpu.reg.pc) {
+                    self.running = false
                 }
             }
         }
@@ -130,7 +133,14 @@ impl Machine {
             },
             "b" => {
                 let a = arg.to_u16()?;
-                self.breakpoint.insert(a);
+                self.breakpoints.insert(a);
+            },
+            "f" => {
+                let a = arg.to_u16()?;
+                self.breakpoints.remove(&a);
+            },
+            "g" => {
+                self.running = true;
             }
             _ => {}
         }
