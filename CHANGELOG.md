@@ -1,5 +1,17 @@
 # Changelog
 
+### 0.10.0
+
+- Integrated machine language monitor
+
+### 0.9.0
+
+- Rewrite of some emulator internals
+
+### 0.8.0
+
+- Keyboard enhancement
+- Build script copies config file in ~/.config/trust80
 
 ### 0.7.0
 
