@@ -11,7 +11,7 @@
 ### 0.8.0
 
 - Keyboard enhancement
-- Build script copies config file in ~/.config/trust80
+- Build script copies config file in ~/.config/trust80/
 
 ### 0.7.0
 
