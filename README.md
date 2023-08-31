@@ -7,7 +7,7 @@ You will need a ROM, and the [AnotherMansTreasureMIB64C2X3Y.ttf](https://www.kre
 
 ![Screenshot](assets/TRuSt-80.png)
 
-You can customize the RAM, ROM and resolution, among other things, in the config.toml file.
+You can customize the RAM, ROM and resolution, among other things, in the ~/.config/trust80/config.toml file.
 The F12 key quits the emulator.
 
 
