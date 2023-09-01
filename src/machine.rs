@@ -92,22 +92,22 @@ impl Machine {
             "reset" => {
                 self.cpu.reg.pc = 0;
                 self.running = true;
-                println!("RESET DONE !");
+                println!("Reset done !");
             }
             "tape" => {
                 if arg == *"rewind" {
                     self.tape.rewind();
-                    println!("TAPE REWOUND !");
+                    println!("Tape rewound !");
                     return Ok(());
                 }
                 let mut tape_path: PathBuf = self.config.storage.tape_path.clone();
                 tape_path.push(arg);
                 match self.tape.load(tape_path) {
                     Ok(()) => {
-                        println!("TAPE LOADED !")
+                        println!("Tape loaded !")
                     }
                     Err(_) => {
-                        println!("FILE NOT FOUND !")
+                        println!("File not found !")
                     }
                 }
             }
