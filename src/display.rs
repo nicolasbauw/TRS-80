@@ -21,10 +21,11 @@ impl Display {
         Ok(d)
     }
 
-    pub fn update(&mut self, bus: &zilog_z80::bus::Bus) {
+    pub fn update(&mut self, bus: &zilog_z80::bus::Bus) -> Result<(), Box<dyn std::error::Error>> {
         self.canvas.clear();
-        self.draw(bus).unwrap();
+        self.draw(bus)?;
         self.canvas.present();
+        Ok(())
     }
 
     fn draw(&mut self, bus: &zilog_z80::bus::Bus) -> Result<(), Box<dyn std::error::Error>> {
