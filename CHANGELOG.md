@@ -1,5 +1,9 @@
 # Changelog
 
+### 0.11.0
+
+- Minor changes in build script and error handling
+
 ### 0.10.0
 
 - Integrated machine language monitor
