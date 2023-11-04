@@ -2,7 +2,11 @@
 
 ### 0.11.0
 
-- Minor changes in build script and error handling
+- Fixed problem that could occur on multiple tape insertions
+- Fixed keyboard glitch that could occur on reset
+- Version + help display
+- New powercycle command resets AND clears RAM
+- Minor changes internal changes
 
 ### 0.10.0
 
