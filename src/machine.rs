@@ -1,5 +1,5 @@
 use sdl2::video::Window;
-use std::{error::Error, fs, path::PathBuf, sync::mpsc, thread, time::Duration, collections::HashSet};
+use std::{error::Error, path::PathBuf, sync::mpsc, thread, time::Duration, collections::HashSet};
 use zilog_z80::cpu::CPU;
 
 use crate::hexconversion::HexStringToUnsigned;
@@ -36,6 +36,7 @@ pub struct Machine {
     ),
     breakpoints: HashSet<u16>,
     running: bool,
+    rom_size: usize
 }
 
 impl Machine {
@@ -50,12 +51,12 @@ impl Machine {
             cmd_channel: mpsc::channel(),
             breakpoints: HashSet::new(),
             running: true,
+            rom_size: 0,
         };
         m.cpu.debug.io = m.config.debug.iodevices.unwrap_or(false);
         m.cpu.debug.instr_in = m.config.debug.iodevices.unwrap_or(false);
-        m.cpu.bus.load_bin(&m.config.memory.rom, 0)?;
-        let rom_space = fs::metadata(&m.config.memory.rom)?.len();
-        m.cpu.bus.set_romspace(0, (rom_space - 1) as u16);
+        m.rom_size = m.cpu.bus.load_bin(&m.config.memory.rom, 0)?;
+        m.cpu.bus.set_romspace(0, (m.rom_size) as u16);
         crate::console::launch(m.cmd_channel.0.clone())?;
         Ok(m)
     }
@@ -117,6 +118,13 @@ impl Machine {
                 self.cpu.reg.pc = 0;
                 self.running = true;
                 println!("Reset done !");
+            }
+            "powercycle" => {
+                self.running = false;
+                self.cpu.bus.clear_mem_slice(self.rom_size, self.config.memory.ram as usize);
+                self.cpu.reg.pc = 0;
+                self.running = true;
+                println!("Powercycle done !");
             }
             "tape" => {
                 if arg == *"rewind" {
