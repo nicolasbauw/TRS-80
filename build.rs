@@ -15,7 +15,7 @@ fn main() {
 
         // Create trust-80's config directory in user's home directory
         dest.push("trust80/");
-        if let Err(_) = create(&dest, false) {
+        if create(&dest, false).is_err() {
             println!("~/.config/trust80 already exists")
         };
 
