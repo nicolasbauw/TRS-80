@@ -61,9 +61,21 @@ impl Machine {
         Ok(m)
     }
 
+    pub fn start(&mut self) {
+        self.running=true;
+    }
+
+    pub fn stop(&mut self) {
+        self.running=false;
+    }
+
+    pub fn is_running(&mut self) -> bool {
+        self.running
+    }
+
     pub fn cpu_loop(&mut self) {
         loop {
-            if !self.running { return }
+            if !self.is_running() { return }
             let pc = self.cpu.reg.pc;
             let opcode = self.cpu.bus.read_byte(pc);
             match opcode {
@@ -95,7 +107,7 @@ impl Machine {
 
             if self.breakpoints.is_empty() { continue }
             if self.breakpoints.contains(&self.cpu.reg.pc) {
-                self.running = false
+                self.stop()
             }
         }
     }
@@ -115,16 +127,16 @@ impl Machine {
                 println!("{HELP}");
             }
             "reset" => {
-                self.running = false;
+                self.stop();
                 self.cpu.reg.pc = 0;
-                self.running = true;
+                self.start();
                 println!("Reset done !");
             }
             "powercycle" => {
-                self.running = false;
+                self.stop();
                 self.cpu.bus.clear_mem_slice(self.rom_size, self.config.memory.ram as usize);
                 self.cpu.reg.pc = 0;
-                self.running = true;
+                self.start();
                 println!("Powercycle done !");
             }
             "tape" => {
@@ -182,7 +194,7 @@ impl Machine {
                 }
             },
             "g" => {
-                self.running = true;
+                self.start();
             },
             "r" => {
                 print!("PC :{:#06X}\tSP : {:#06X}\nS : {}\tZ : {}\tH : {}\tP : {}\tN : {}\tC : {}\nB : {:#04X}\tC : {:#04X}\nD : {:#04X}\tE : {:#04X}\nH : {:#04X}\tL : {:#04X}\nA : {:#04X}\t(SP) : {:#06X}\n", self.cpu.reg.pc, self.cpu.reg.sp, self.cpu.reg.flags.s as i32, self.cpu.reg.flags.z as i32, self.cpu.reg.flags.h as i32, self.cpu.reg.flags.p as i32, self.cpu.reg.flags.n as i32, self.cpu.reg.flags.c as i32, self.cpu.reg.b, self.cpu.reg.c, self.cpu.reg.d, self.cpu.reg.e, self.cpu.reg.h, self.cpu.reg.l, self.cpu.reg.a, self.cpu.bus.read_word(self.cpu.reg.sp))
