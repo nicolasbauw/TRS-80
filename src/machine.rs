@@ -4,6 +4,26 @@ use zilog_z80::cpu::CPU;
 
 use crate::hexconversion::HexStringToUnsigned;
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+const HELP: &str = "
+Commands:
+    reset           reboots the TRS-80
+    tape rewind     \"rewinds\" the tape
+    tape [file]     \"inserts\" a .cas tape file
+    
+Monitor commands:
+    d 0x0000        disassembles code at 0x0000 and the 20 next
+                    instructions
+    m 0xeeee        displays memory content at address 0xeeee
+    m 0xeeee 0xaa   sets memory address 0xeeee to the 0xaa value
+    j 0x0000        jumps to 0x0000 address
+    b               displays set breakpoints
+    b 0x0002        sets a breakpoint at address 0x0002
+    f 0x0002        \"frees\" (deletes) breakpoint at address 0x0002
+    g               resumes execution after a breakpoint has been used to
+                    halt execution
+    r               displays the contents of flags and registers";
+
 pub struct Machine {
     pub cpu: CPU,
     pub display: crate::display::Display,
@@ -89,6 +109,10 @@ impl Machine {
         let (command, arg, arg2 ) = self.cmd_channel.1.try_recv()?;
 
         match command.as_str() {
+            "help" => {
+                println!("Version {VERSION}");
+                println!("{HELP}");
+            }
             "reset" => {
                 self.cpu.reg.pc = 0;
                 self.running = true;
