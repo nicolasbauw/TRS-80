@@ -29,6 +29,7 @@ impl CassetteReader {
 
     pub fn load(&mut self, filename: PathBuf) -> io::Result<()> {
         let mut f = File::open(filename)?;
+        self.inserted_tape.clear();
         f.read_to_end(&mut self.inserted_tape)?;
         self.serialized_tape = self.serialize();
         self.tape_position = 0;
