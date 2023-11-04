@@ -115,6 +115,7 @@ impl Machine {
                 println!("{HELP}");
             }
             "reset" => {
+                self.running = false;
                 self.cpu.reg.pc = 0;
                 self.running = true;
                 println!("Reset done !");
