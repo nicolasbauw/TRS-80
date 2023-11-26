@@ -8,6 +8,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 const HELP: &str = "
 Commands:
     reset           reboots the TRS-80
+    powercycle      reboots the TRS-80 and clears RAM
     tape rewind     \"rewinds\" the tape
     tape [file]     \"inserts\" a .cas tape file
     
