@@ -1,8 +1,10 @@
 use std::{io::stdin, io::stdout, io::Write, sync::mpsc, thread, time::Duration};
 
+use crate::machine::MachineError;
+
 pub fn launch(
     cmd_channel: mpsc::Sender<(String, String, String)>,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), MachineError> {
     thread::Builder::new().name(String::from("Console")).spawn(
         move || -> Result<(), mpsc::SendError<(String, String, String)>> {
             loop {
