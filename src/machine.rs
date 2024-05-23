@@ -1,5 +1,5 @@
 use sdl2::video::Window;
-use std::{error::Error, path::PathBuf, sync::mpsc, thread, time::Duration, collections::HashSet};
+use std::{fmt, sync::mpsc::SendError, error, error::Error, path::PathBuf, sync::mpsc, thread, time::Duration, collections::HashSet};
 use zilog_z80::cpu::CPU;
 
 use crate::hexconversion::HexStringToUnsigned;
@@ -24,6 +24,55 @@ Monitor commands:
     g               resumes execution after a breakpoint has been used to
                     halt execution
     r               displays the contents of flags and registers";
+
+    #[derive(Debug, PartialEq, Eq, Clone)]
+    pub enum MachineError {
+        ConfigFile,
+        ConfigFileFmt,
+        IOError,
+        SendMsgError,
+        SnapshotError,
+    }
+    
+    impl fmt::Display for MachineError {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str("Machine error : ")?;
+            f.write_str(match self {
+                MachineError::ConfigFileFmt => "Bad config file format",
+                MachineError::ConfigFile => "Can't load config file",
+                MachineError::IOError => "I/O Error",
+                MachineError::SendMsgError => "Message not sent",
+                MachineError::SnapshotError => "Snapshot I/O error",
+            })
+        }
+    }
+    
+    impl From<std::io::Error> for MachineError {
+        fn from(_e: std::io::Error) -> MachineError {
+            MachineError::IOError
+        }
+    }
+    
+    impl From<toml::de::Error> for MachineError {
+        fn from(_e: toml::de::Error) -> MachineError {
+            MachineError::ConfigFileFmt
+        }
+    }
+    
+    impl From<SendError<(String, String, String)>> for MachineError {
+        fn from(_e: SendError<(String, String, String)>) -> MachineError {
+            MachineError::SendMsgError
+        }
+    }
+    
+    
+    impl From<MachineError> for std::io::Error {
+        fn from(e: MachineError) -> std::io::Error {
+            std::io::Error::new(std::io::ErrorKind::Other, e)
+        }
+    }
+    
+    impl error::Error for MachineError {}
 
 pub struct Machine {
     pub cpu: CPU,
