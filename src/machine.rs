@@ -32,6 +32,7 @@ Monitor commands:
         IOError,
         SendMsgError,
         SnapshotError,
+        DisplayError
     }
     
     impl fmt::Display for MachineError {
@@ -43,6 +44,7 @@ Monitor commands:
                 MachineError::IOError => "I/O Error",
                 MachineError::SendMsgError => "Message not sent",
                 MachineError::SnapshotError => "Snapshot I/O error",
+                MachineError::DisplayError => "SDL2 error",
             })
         }
     }
