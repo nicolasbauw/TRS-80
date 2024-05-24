@@ -1,7 +1,7 @@
 use sdl2::video::Window;
 use std::{fmt, sync::mpsc::SendError, error, error::Error, path::PathBuf, sync::mpsc, thread, time::Duration, collections::HashSet};
 use zilog_z80::cpu::CPU;
-
+use directories::UserDirs;
 use crate::hexconversion::HexStringToUnsigned;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -92,11 +92,18 @@ pub struct Machine {
 }
 
 impl Machine {
-    pub fn new(window: Window) -> Result<Machine, Box<dyn Error>> {
-        let config = crate::config::load_config_file()?;
+    pub fn new(window: Window) -> Result<Machine, MachineError> {
+        let Ok(config) = crate::config::load_config_file() else {
+            let user_dirs = UserDirs::new().ok_or(MachineError::ConfigFile)?;
+            let mut cfg = user_dirs.home_dir().to_path_buf();
+            cfg.push(".config/trust80/config.toml");
+            eprintln!("Can't load config file {}",cfg.to_str().unwrap());
+            return Err(MachineError::ConfigFile);
+        };
+        let Ok(display) = crate::display::Display::new(window) else { return Err(MachineError::DisplayError) };
         let mut m = Self {
             cpu: CPU::new(0xFFFF),
-            display: crate::display::Display::new(window)?,
+            display,
             keyboard: crate::keyboard::Keyboard::new(),
             tape: crate::cassette::CassetteReader::new(),
             config,
@@ -107,7 +114,11 @@ impl Machine {
         };
         m.cpu.debug.io = m.config.debug.iodevices.unwrap_or(false);
         m.cpu.debug.instr_in = m.config.debug.iodevices.unwrap_or(false);
-        m.rom_size = m.cpu.bus.load_bin(&m.config.memory.rom, 0)?;
+        let Ok(s) = m.cpu.bus.load_bin(&m.config.memory.rom, 0) else {
+            eprintln!("Can't load ROM file {}", &m.config.memory.rom);
+            return Err(MachineError::IOError);
+        };
+        m.rom_size = s;
         m.cpu.bus.set_romspace(0, (m.rom_size) as u16);
         crate::console::launch(m.cmd_channel.0.clone())?;
         Ok(m)
