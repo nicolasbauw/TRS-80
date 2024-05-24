@@ -4,6 +4,8 @@ use sdl2::render::Canvas;
 use sdl2::video::Window;
 use std::error::Error;
 
+use crate::machine::MachineError;
+
 pub struct Display {
     pub canvas: Canvas<sdl2::video::Window>,
     ttf_context: sdl2::ttf::Sdl2TtfContext,
@@ -54,9 +56,12 @@ impl Display {
             s.push(String::from_utf16_lossy(line));
         }
 
-        let font = self
+        let Ok(font) = self
             .ttf_context
-            .load_font(&self.config.display.font, self.config.display.font_size)?;
+            .load_font(&self.config.display.font, self.config.display.font_size) else {
+                eprintln!("Can't load font {}", &self.config.display.font);
+                return Err(Box::new(MachineError::DisplayError));
+            };
 
         let texture_creator = self.canvas.texture_creator();
         let mut y = 0;
