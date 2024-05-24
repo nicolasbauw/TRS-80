@@ -1,11 +1,14 @@
 # TRuSt-80
 
+[![Current Crates.io Version](https://img.shields.io/crates/v/trust-80.svg)](https://crates.io/crates/trust-80)
+[![Downloads badge](https://img.shields.io/crates/d/trust-80.svg)](https://crates.io/crates/trust-80)
+
 TRuSt-80 is a cross-platform TRS-80 (model 1) emulator, based on my [Z80 emulator](https://github.com/nicolasbauw/ZilogZ80).
 It has a working keyboard (hint : for " type shift+2 like on the original layout), can run Level 1 and Level 2 basic, and load .cas tape images.
-You will need a ROM, and the [AnotherMansTreasureMIB64C2X3Y.ttf](https://www.kreativekorp.com/swdownload/fonts/retro/amtreasure.zip) font. If not already installed, you will need sdl2 and sdl2_ttf libraries (Mac users can install them with homebrew; they are included in the windows archive).
+You will need a ROM, and the [AnotherMansTreasureMIB64C2X3Y.ttf](https://www.kreativekorp.com/swdownload/fonts/retro/amtreasure.zip) font. If not already installed, you will need sdl2 and sdl2_ttf libraries.
 
 
-![Screenshot](assets/TRuSt-80.png)
+![Screenshot](assets/TRuSt-80-2.png)
 
 You can customize the RAM, ROM and resolution, among other things, in the ~/.config/trust80/config.toml file.
 The F12 key quits the emulator.
