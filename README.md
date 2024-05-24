@@ -22,7 +22,7 @@ The `tape` command followed by a filename is used to "insert" a tape:
 tape seawar4k.cas
 ```
 
-Starting with version 0.10.0, there is an integrated machine language monitor:  
+Since version 0.10.0, there is an integrated machine language monitor:  
 `d 0x0000` disassembles code at 0x0000 and the 20 next instructions.  
 `m 0xeeee` displays memory content at address 0xeeee  
 `m 0xeeee 0xaa` sets memory address to the 0xaa value  
