@@ -1,5 +1,5 @@
 use sdl2::{event::Event, keyboard::Keycode};
-use std::error::Error;
+use std::{error::Error, process::ExitCode};
 mod cassette;
 mod config;
 mod console;
@@ -9,7 +9,14 @@ mod machine;
 mod hexconversion;
 use machine::Machine;
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> ExitCode {
+    if let Err(_) = launch() {
+        return ExitCode::from(1);
+    }
+    ExitCode::from(0)
+}
+
+fn launch() -> Result<(), Box<dyn Error>> {
     // Setting up SDL
     let config = config::load_config_file()?;
     let sdl_context = sdl2::init()?;
