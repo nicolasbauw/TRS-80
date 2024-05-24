@@ -97,7 +97,7 @@ impl Machine {
             let user_dirs = UserDirs::new().ok_or(MachineError::ConfigFile)?;
             let mut cfg = user_dirs.home_dir().to_path_buf();
             cfg.push(".config/trust80/config.toml");
-            eprintln!("Can't load config file {}",cfg.to_str().unwrap());
+            eprintln!("Can't load config file {}",cfg.to_str().unwrap_or_default());
             return Err(MachineError::ConfigFile);
         };
         let Ok(display) = crate::display::Display::new(window) else { return Err(MachineError::DisplayError) };
