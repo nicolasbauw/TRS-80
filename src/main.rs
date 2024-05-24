@@ -13,6 +13,7 @@ fn main() -> ExitCode {
     if let Err(_) = launch() {
         return ExitCode::from(1);
     }
+    println!("\n");
     ExitCode::from(0)
 }
 

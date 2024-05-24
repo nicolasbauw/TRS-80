@@ -59,7 +59,7 @@ impl Display {
         let Ok(font) = self
             .ttf_context
             .load_font(&self.config.display.font, self.config.display.font_size) else {
-                eprintln!("Can't load font {}", &self.config.display.font);
+                eprintln!("\nCan't load font {}", &self.config.display.font);
                 return Err(Box::new(MachineError::DisplayError));
             };
 
