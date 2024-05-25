@@ -1,6 +1,6 @@
 [package]
 name = "trust-80"
-version = "0.12.0"
+version = "0.13.0"
 edition = "2021"
 authors = ["Nicolas BAUW <nbauw@hotmail.com>"]
 description = "TRS-80 Emulator"
@@ -13,7 +13,7 @@ readme = "README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-zilog_z80 = "0.15.0"
+zilog_z80 = "0.16.0"
 toml = "0.7.0"
 serde = "1.0.145"
 serde_derive = "1.0.145"
