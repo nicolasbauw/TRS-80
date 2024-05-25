@@ -222,7 +222,7 @@ impl Machine {
             "d" => {
                 let mut a = arg.to_u16()?;
                 for _ in 0..=20 {
-                    let d = self.cpu.dasm_1byte(a);
+                    let d = self.cpu.dasm(a);
                     println!("{:04X}    {}", a, d.0);
                     a += (d.1) as u16;
                 }
