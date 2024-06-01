@@ -24,7 +24,7 @@ pub fn launch(
                 let arg2 = parts.next().unwrap_or_default().to_string();
 
                 cmd_channel.send((command, arg, arg2))?;
-                thread::sleep(Duration::from_millis(75));
+                thread::sleep(Duration::from_millis(100));
             }
         },
     )?;
