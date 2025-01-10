@@ -14,7 +14,8 @@ You can customize the RAM, ROM and resolution, among other things, in the ~/.con
 The F12 key quits the emulator.
 
 
-In the console, the `reset` command reboots the TRS-80.  
+In the console, the `reset` command resets the TRS-80.  
+The `powercycle` command resets the TRS-80 and clears the RAM.  
 The `tape rewind` command is used to "rewind" the tape.  
 The `tape` command followed by a filename is used to "insert" a tape:  
 
