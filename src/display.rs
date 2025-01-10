@@ -4,11 +4,8 @@ use sdl2::render::Canvas;
 use sdl2::video::Window;
 use std::error::Error;
 
-use crate::machine::MachineError;
-
 pub struct Display {
     pub canvas: Canvas<sdl2::video::Window>,
-    ttf_context: sdl2::ttf::Sdl2TtfContext,
     config: crate::config::Config,
 }
 
@@ -17,20 +14,19 @@ impl Display {
         let config = crate::config::load_config_file()?;
         let d = Display {
             canvas: window.into_canvas().accelerated().present_vsync().build()?,
-            ttf_context: sdl2::ttf::init().map_err(|e| e.to_string())?,
             config,
         };
         Ok(d)
     }
 
-    pub fn update(&mut self, bus: &zilog_z80::bus::Bus) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn update(&mut self, bus: &zilog_z80::bus::Bus, font: &sdl2::ttf::Font) -> Result<(), Box<dyn std::error::Error>> {
         self.canvas.clear();
-        self.draw(bus)?;
+        self.draw(bus, font)?;
         self.canvas.present();
         Ok(())
     }
 
-    fn draw(&mut self, bus: &zilog_z80::bus::Bus) -> Result<(), Box<dyn std::error::Error>> {
+    fn draw(&mut self, bus: &zilog_z80::bus::Bus, font: &sdl2::ttf::Font) -> Result<(), Box<dyn std::error::Error>> {
         let bytes = bus.read_mem_slice(0x3C00, 0x4000);
         let mut start = 0x0000;
         let mut end = 0x0040;
@@ -55,13 +51,6 @@ impl Display {
         for line in line_bytes.iter() {
             s.push(String::from_utf16_lossy(line));
         }
-
-        let Ok(font) = self
-            .ttf_context
-            .load_font(&self.config.display.font, self.config.display.font_size) else {
-                eprintln!("\nCan't load font {}", &self.config.display.font);
-                return Err(Box::new(MachineError::DisplayError));
-            };
 
         let texture_creator = self.canvas.texture_creator();
         let mut y = 0;

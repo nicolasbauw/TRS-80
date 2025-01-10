@@ -7,7 +7,7 @@ mod display;
 mod keyboard;
 mod machine;
 mod hexconversion;
-use machine::Machine;
+use machine::{ Machine, MachineError };
 
 fn main() -> ExitCode {
     if let Err(_) = launch() {
@@ -24,6 +24,7 @@ fn launch() -> Result<(), Box<dyn Error>> {
     let video_subsystem = sdl_context.video()?;
     let display_mode = video_subsystem.current_display_mode(0)?;
     let refresh_rate = display_mode.refresh_rate;
+    let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
 
     let window = video_subsystem
         .window("TRuSt-80", config.display.width, config.display.height)
@@ -33,6 +34,14 @@ fn launch() -> Result<(), Box<dyn Error>> {
     // Creating the TRS-80
     let mut trs80 = Machine::new(window)?;
     trs80.set_timings(refresh_rate);
+    
+    let Ok(font) = 
+             ttf_context
+            .load_font(config.display.font, config.display.font_size) else {
+                eprintln!("\nCan't load font");
+                return Err(Box::new(MachineError::DisplayError));
+            };
+    
 
     // SDL loop
     'running: loop {
@@ -56,7 +65,7 @@ fn launch() -> Result<(), Box<dyn Error>> {
         trs80.keyboard.update(events, &mut trs80.cpu.bus);
 
         // Update display
-        trs80.display.update(&trs80.cpu.bus)?;
+        trs80.display.update(&trs80.cpu.bus, &font)?;
 
         // Handle console commands
         trs80.console().unwrap_or_default();
