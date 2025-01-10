@@ -19,14 +19,22 @@ impl Display {
         Ok(d)
     }
 
-    pub fn update(&mut self, bus: &zilog_z80::bus::Bus, font: &sdl2::ttf::Font) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn update(
+        &mut self,
+        bus: &zilog_z80::bus::Bus,
+        font: &sdl2::ttf::Font,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         self.canvas.clear();
         self.draw(bus, font)?;
         self.canvas.present();
         Ok(())
     }
 
-    fn draw(&mut self, bus: &zilog_z80::bus::Bus, font: &sdl2::ttf::Font) -> Result<(), Box<dyn std::error::Error>> {
+    fn draw(
+        &mut self,
+        bus: &zilog_z80::bus::Bus,
+        font: &sdl2::ttf::Font,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let bytes = bus.read_mem_slice(0x3C00, 0x4000);
         let mut start = 0x0000;
         let mut end = 0x0040;

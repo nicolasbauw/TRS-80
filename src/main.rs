@@ -4,10 +4,10 @@ mod cassette;
 mod config;
 mod console;
 mod display;
+mod hexconversion;
 mod keyboard;
 mod machine;
-mod hexconversion;
-use machine::{ Machine, MachineError };
+use machine::{Machine, MachineError};
 
 fn main() -> ExitCode {
     if let Err(_) = launch() {
@@ -34,14 +34,11 @@ fn launch() -> Result<(), Box<dyn Error>> {
     // Creating the TRS-80
     let mut trs80 = Machine::new(window)?;
     trs80.set_timings(refresh_rate);
-    
-    let Ok(font) = 
-             ttf_context
-            .load_font(config.display.font, config.display.font_size) else {
-                eprintln!("\nCan't load font");
-                return Err(Box::new(MachineError::DisplayError));
-            };
-    
+
+    let Ok(font) = ttf_context.load_font(config.display.font, config.display.font_size) else {
+        eprintln!("\nCan't load font");
+        return Err(Box::new(MachineError::DisplayError));
+    };
 
     // SDL loop
     'running: loop {

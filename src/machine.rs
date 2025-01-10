@@ -1,8 +1,11 @@
-use sdl2::video::Window;
-use std::{fmt, sync::mpsc::SendError, error, error::Error, path::PathBuf, sync::mpsc, thread, time::Duration, collections::HashSet};
-use zilog_z80::cpu::CPU;
-use directories::UserDirs;
 use crate::hexconversion::HexStringToUnsigned;
+use directories::UserDirs;
+use sdl2::video::Window;
+use std::{
+    collections::HashSet, error, error::Error, fmt, path::PathBuf, sync::mpsc,
+    sync::mpsc::SendError, thread, time::Duration,
+};
+use zilog_z80::cpu::CPU;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const HELP: &str = "
@@ -25,56 +28,55 @@ Monitor commands:
                     halt execution
     r               displays the contents of flags and registers";
 
-    #[derive(Debug, PartialEq, Eq, Clone)]
-    pub enum MachineError {
-        ConfigFile,
-        ConfigFileFmt,
-        IOError,
-        SendMsgError,
-        SnapshotError,
-        DisplayError
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum MachineError {
+    ConfigFile,
+    ConfigFileFmt,
+    IOError,
+    SendMsgError,
+    SnapshotError,
+    DisplayError,
+}
+
+impl fmt::Display for MachineError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Machine error : ")?;
+        f.write_str(match self {
+            MachineError::ConfigFileFmt => "Bad config file format",
+            MachineError::ConfigFile => "Can't load config file",
+            MachineError::IOError => "I/O Error",
+            MachineError::SendMsgError => "Message not sent",
+            MachineError::SnapshotError => "Snapshot I/O error",
+            MachineError::DisplayError => "SDL2 error",
+        })
     }
-    
-    impl fmt::Display for MachineError {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            f.write_str("Machine error : ")?;
-            f.write_str(match self {
-                MachineError::ConfigFileFmt => "Bad config file format",
-                MachineError::ConfigFile => "Can't load config file",
-                MachineError::IOError => "I/O Error",
-                MachineError::SendMsgError => "Message not sent",
-                MachineError::SnapshotError => "Snapshot I/O error",
-                MachineError::DisplayError => "SDL2 error",
-            })
-        }
+}
+
+impl From<std::io::Error> for MachineError {
+    fn from(_e: std::io::Error) -> MachineError {
+        MachineError::IOError
     }
-    
-    impl From<std::io::Error> for MachineError {
-        fn from(_e: std::io::Error) -> MachineError {
-            MachineError::IOError
-        }
+}
+
+impl From<toml::de::Error> for MachineError {
+    fn from(_e: toml::de::Error) -> MachineError {
+        MachineError::ConfigFileFmt
     }
-    
-    impl From<toml::de::Error> for MachineError {
-        fn from(_e: toml::de::Error) -> MachineError {
-            MachineError::ConfigFileFmt
-        }
+}
+
+impl From<SendError<(String, String, String)>> for MachineError {
+    fn from(_e: SendError<(String, String, String)>) -> MachineError {
+        MachineError::SendMsgError
     }
-    
-    impl From<SendError<(String, String, String)>> for MachineError {
-        fn from(_e: SendError<(String, String, String)>) -> MachineError {
-            MachineError::SendMsgError
-        }
+}
+
+impl From<MachineError> for std::io::Error {
+    fn from(e: MachineError) -> std::io::Error {
+        std::io::Error::new(std::io::ErrorKind::Other, e)
     }
-    
-    
-    impl From<MachineError> for std::io::Error {
-        fn from(e: MachineError) -> std::io::Error {
-            std::io::Error::new(std::io::ErrorKind::Other, e)
-        }
-    }
-    
-    impl error::Error for MachineError {}
+}
+
+impl error::Error for MachineError {}
 
 pub struct Machine {
     pub cpu: CPU,
@@ -88,7 +90,7 @@ pub struct Machine {
     ),
     breakpoints: HashSet<u16>,
     running: bool,
-    rom_size: usize
+    rom_size: usize,
 }
 
 impl Machine {
@@ -97,10 +99,15 @@ impl Machine {
             let user_dirs = UserDirs::new().ok_or(MachineError::ConfigFile)?;
             let mut cfg = user_dirs.home_dir().to_path_buf();
             cfg.push(".config/trust80/config.toml");
-            eprintln!("Can't load config file {}",cfg.to_str().unwrap_or_default());
+            eprintln!(
+                "Can't load config file {}",
+                cfg.to_str().unwrap_or_default()
+            );
             return Err(MachineError::ConfigFile);
         };
-        let Ok(display) = crate::display::Display::new(window) else { return Err(MachineError::DisplayError) };
+        let Ok(display) = crate::display::Display::new(window) else {
+            return Err(MachineError::DisplayError);
+        };
         let mut m = Self {
             cpu: CPU::new(0xFFFF),
             display,
@@ -125,11 +132,11 @@ impl Machine {
     }
 
     pub fn start(&mut self) {
-        self.running=true;
+        self.running = true;
     }
 
     pub fn stop(&mut self) {
-        self.running=false;
+        self.running = false;
     }
 
     pub fn is_running(&mut self) -> bool {
@@ -138,7 +145,9 @@ impl Machine {
 
     pub fn cpu_loop(&mut self) {
         loop {
-            if !self.is_running() { return }
+            if !self.is_running() {
+                return;
+            }
             let pc = self.cpu.reg.pc;
             let opcode = self.cpu.bus.read_byte(pc);
             match opcode {
@@ -168,7 +177,9 @@ impl Machine {
                 break;
             }
 
-            if self.breakpoints.is_empty() { continue }
+            if self.breakpoints.is_empty() {
+                continue;
+            }
             if self.breakpoints.contains(&self.cpu.reg.pc) {
                 self.stop()
             }
@@ -182,7 +193,7 @@ impl Machine {
     }
 
     pub fn console(&mut self) -> Result<(), Box<dyn Error>> {
-        let (command, arg, arg2 ) = self.cmd_channel.1.try_recv()?;
+        let (command, arg, arg2) = self.cmd_channel.1.try_recv()?;
 
         match command.as_str() {
             "help" => {
@@ -197,7 +208,9 @@ impl Machine {
             }
             "powercycle" => {
                 self.stop();
-                self.cpu.bus.clear_mem_slice(self.rom_size, self.config.memory.ram as usize);
+                self.cpu
+                    .bus
+                    .clear_mem_slice(self.rom_size, self.config.memory.ram as usize);
                 self.cpu.reg.pc = 0;
                 self.start();
                 println!("Powercycle done !");
@@ -226,7 +239,7 @@ impl Machine {
                     println!("{:04X}    {}", a, d.0);
                     a += (d.1) as u16;
                 }
-            },
+            }
             "m" => {
                 let a = arg.to_u16()?;
                 println!("{:04X}    {:02X}", a, self.cpu.bus.read_byte(a));
@@ -234,34 +247,36 @@ impl Machine {
                     self.cpu.bus.write_byte(a, arg2.to_u8()?);
                     println!("{:04X} -> {:02X}", a, self.cpu.bus.read_byte(a));
                 }
-            },
+            }
             "j" => {
                 let a = arg.to_u16()?;
                 self.cpu.reg.pc = a;
-            },
+            }
             "b" => {
                 let Ok(a) = arg.to_u16() else {
-                    if self.breakpoints.is_empty() { println!("No breakpoints !") }
+                    if self.breakpoints.is_empty() {
+                        println!("No breakpoints !")
+                    }
                     for b in &self.breakpoints {
                         println!("{:#06X}", b);
                     }
-                    return Ok(()); 
+                    return Ok(());
                 };
                 self.breakpoints.insert(a);
                 println!("New breakpoint at {:#06X}", a);
-            },
+            }
             "f" => {
                 let a = arg.to_u16()?;
                 if self.breakpoints.remove(&a) {
                     println!("Breakpoint at {:#06X} removed", a);
                 }
-            },
+            }
             "g" => {
                 self.start();
-            },
+            }
             "r" => {
                 print!("PC :{:#06X}\tSP : {:#06X}\nS : {}\tZ : {}\tH : {}\tP : {}\tN : {}\tC : {}\nB : {:#04X}\tC : {:#04X}\nD : {:#04X}\tE : {:#04X}\nH : {:#04X}\tL : {:#04X}\nA : {:#04X}\t(SP) : {:#06X}\n", self.cpu.reg.pc, self.cpu.reg.sp, self.cpu.reg.flags.s as i32, self.cpu.reg.flags.z as i32, self.cpu.reg.flags.h as i32, self.cpu.reg.flags.p as i32, self.cpu.reg.flags.n as i32, self.cpu.reg.flags.c as i32, self.cpu.reg.b, self.cpu.reg.c, self.cpu.reg.d, self.cpu.reg.e, self.cpu.reg.h, self.cpu.reg.l, self.cpu.reg.a, self.cpu.bus.read_word(self.cpu.reg.sp))
-            },
+            }
             _ => {}
         }
         Ok(())

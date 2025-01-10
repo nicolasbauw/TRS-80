@@ -7,7 +7,9 @@ fn main() {
         let mut dest = home_dir.to_path_buf();
 
         // Do not overwrite config file if present
-        let options = fs_extra::dir::CopyOptions::new().skip_exist(true).overwrite(false);
+        let options = fs_extra::dir::CopyOptions::new()
+            .skip_exist(true)
+            .overwrite(false);
 
         // Create .config directory in user's home directory
         dest.push(".config/");
