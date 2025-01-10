@@ -1,5 +1,10 @@
 # Changelog
 
+### 0.13.0
+
+- Updated z80 emulator version
+- No font loading at each frame
+
 ### 0.11.0
 
 - Fixed problem that could occur on multiple tape insertions
