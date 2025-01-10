@@ -10,7 +10,7 @@ mod machine;
 use machine::{Machine, MachineError};
 
 fn main() -> ExitCode {
-    if let Err(_) = launch() {
+    if launch().is_err(){
         return ExitCode::from(1);
     }
     println!("\n");
