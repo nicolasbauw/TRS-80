@@ -20,9 +20,6 @@ The `tape rewind` command is used to "rewind" the tape.
 The `tape` command followed by a filename is used to "insert" a tape:  
 Type `help` to display available commands.  
 
-```
-tape seawar4k.cas
-```
 
 There is also an integrated machine language monitor:  
 `d 0x0000` disassembles code at 0x0000 and the 20 next instructions.  
