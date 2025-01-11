@@ -24,7 +24,7 @@ fn launch() -> Result<(), Box<dyn Error>> {
     let video_subsystem = sdl_context.video()?;
     let display_mode = video_subsystem.current_display_mode(0)?;
     let refresh_rate = display_mode.refresh_rate;
-    let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
+    let ttf_context = sdl2::ttf::init()?;
 
     let window = video_subsystem
         .window("TRuSt-80", config.display.width, config.display.height)
