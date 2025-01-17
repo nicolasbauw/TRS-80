@@ -37,8 +37,7 @@ fn launch() -> Result<(), Box<dyn Error>> {
     trs80.set_timings(refresh_rate);
 
     let Ok(font) = ttf_context.load_font(config.display.font, config.display.font_size) else {
-        eprintln!("\nCan't load font");
-        return Err(Box::new(MachineError::DisplayError));
+        return Err(Box::new(MachineError::FontError));
     };
 
     // SDL loop
