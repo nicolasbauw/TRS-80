@@ -41,7 +41,6 @@ pub enum MachineError {
 
 impl fmt::Display for MachineError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("Machine error : ")?;
         f.write_str(match self {
             MachineError::ConfigFileFmt => "Bad config file format",
             MachineError::ConfigFile => "Can't load config file",
