@@ -1,5 +1,10 @@
 # Changelog
 
+### 1.0.0
+
+- 1.0.0 release
+- Better error messages
+
 ### 0.13.0
 
 - Updated z80 emulator version
