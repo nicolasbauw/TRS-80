@@ -36,7 +36,7 @@ pub enum MachineError {
     SendMsgError,
     SnapshotError,
     DisplayError,
-    FontError
+    FontError,
 }
 
 impl fmt::Display for MachineError {
@@ -48,7 +48,7 @@ impl fmt::Display for MachineError {
             MachineError::SendMsgError => "Message not sent",
             MachineError::SnapshotError => "Snapshot I/O error",
             MachineError::DisplayError => "SDL2 error",
-            MachineError::FontError => "Can't load font"
+            MachineError::FontError => "Can't load font",
         })
     }
 }
