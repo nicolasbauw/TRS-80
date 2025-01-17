@@ -32,13 +32,13 @@ fn launch() -> Result<(), Box<dyn Error>> {
         .position_centered()
         .build()?;
 
-    // Creating the TRS-80
-    let mut trs80 = Machine::new(window)?;
-    trs80.set_timings(refresh_rate);
-
     let Ok(font) = ttf_context.load_font(config.display.font, config.display.font_size) else {
         return Err(Box::new(MachineError::FontError));
     };
+
+    // Creating the TRS-80
+    let mut trs80 = Machine::new(window)?;
+    trs80.set_timings(refresh_rate);
 
     // SDL loop
     'running: loop {
