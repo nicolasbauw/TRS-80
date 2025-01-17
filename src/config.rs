@@ -41,6 +41,6 @@ pub fn load_config_file() -> Result<Config, MachineError> {
     let mut cfg = user_dirs?.home_dir().to_path_buf();
     cfg.push(".config/trust80/config.toml");
     let buf = fs::read_to_string(cfg)?;
-    let config: Config = toml::from_str(&buf).map_err(|_e| MachineError::ConfigFile)?;
+    let config: Config = toml::from_str(&buf).map_err(|_e| MachineError::ConfigFileFmt)?;
     Ok(config)
 }
