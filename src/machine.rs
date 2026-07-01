@@ -1,6 +1,6 @@
 use crate::hexconversion::HexStringToUnsigned;
 use directories::UserDirs;
-use sdl2::video::Window;
+use sdl3::video::Window;
 use std::{
     collections::HashSet, error, error::Error, fmt, path::PathBuf, sync::mpsc,
     sync::mpsc::SendError, thread, time::Duration,
@@ -47,7 +47,7 @@ impl fmt::Display for MachineError {
             MachineError::IOError => "I/O Error",
             MachineError::SendMsgError => "Message not sent",
             MachineError::SnapshotError => "Snapshot I/O error",
-            MachineError::DisplayError => "SDL2 error",
+            MachineError::DisplayError => "SDL3 error",
             MachineError::FontError => "Can't load font",
         })
     }
@@ -187,8 +187,8 @@ impl Machine {
         }
     }
 
-    pub fn set_timings(&mut self, refresh_rate: i32) {
-        let s: f32 = (1.0 / (refresh_rate as f32)) * 1000.0;
+    pub fn set_timings(&mut self, refresh_rate: f32) {
+        let s: f32 = (1.0 / refresh_rate) * 1000.0;
         self.cpu.set_slice_duration(s as u32); // Adjusting slice_duration to detected refresh rate
         self.cpu.set_freq(1.77); // Adjusting slice_max_cycles to detected refresh rate
     }

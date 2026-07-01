@@ -1,11 +1,10 @@
-use sdl2::pixels::Color;
-use sdl2::rect::Rect;
-use sdl2::render::Canvas;
-use sdl2::video::Window;
+use sdl3::pixels::Color;
+use sdl3::render::{Canvas, FRect};
+use sdl3::video::Window;
 use std::error::Error;
 
 pub struct Display {
-    pub canvas: Canvas<sdl2::video::Window>,
+    pub canvas: Canvas<sdl3::video::Window>,
     config: crate::config::Config,
 }
 
@@ -13,7 +12,7 @@ impl Display {
     pub fn new(window: Window) -> Result<Display, Box<dyn Error>> {
         let config = crate::config::load_config_file()?;
         let d = Display {
-            canvas: window.into_canvas().accelerated().present_vsync().build()?,
+            canvas: window.into_canvas(),
             config,
         };
         Ok(d)
@@ -22,7 +21,7 @@ impl Display {
     pub fn update(
         &mut self,
         bus: &zilog_z80::bus::Bus,
-        font: &sdl2::ttf::Font,
+        font: &sdl3::ttf::Font,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.canvas.clear();
         self.draw(bus, font)?;
@@ -33,7 +32,7 @@ impl Display {
     fn draw(
         &mut self,
         bus: &zilog_z80::bus::Bus,
-        font: &sdl2::ttf::Font,
+        font: &sdl3::ttf::Font,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let bytes = bus.read_mem_slice(0x3C00, 0x4000);
         let mut start = 0x0000;
@@ -61,22 +60,22 @@ impl Display {
         }
 
         let texture_creator = self.canvas.texture_creator();
-        let mut y = 0;
+        let mut y = 0i32;
         for line in s.iter() {
             let surf = font
                 .render(line)
                 .blended(Color::RGBA(219, 220, 250, 255))
                 .map_err(|e| e.to_string())?;
 
-            let r = Rect::new(
-                0,
-                y,
-                self.config.display.width,
-                self.config.display.height / 16,
+            let r = FRect::new(
+                0.0,
+                y as f32,
+                self.config.display.width as f32,
+                (self.config.display.height / 16) as f32,
             );
             y += (self.config.display.height as i32) / 16;
             let text_tex = texture_creator.create_texture_from_surface(surf)?;
-            self.canvas.copy(&text_tex, None, Some(r))?;
+            self.canvas.copy(&text_tex, None, r)?;
         }
         Ok(())
     }

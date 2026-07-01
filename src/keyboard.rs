@@ -1,4 +1,6 @@
-use sdl2::{keyboard::Keycode, EventPump};
+use sdl3::{keyboard::Keycode, EventPump};
+use sdl3::keyboard::Mod;
+use sdl3::sys::keycode::SDL_Keymod;
 use std::collections::HashSet;
 use zilog_z80::bus::Bus;
 
@@ -35,7 +37,7 @@ impl Keyboard {
         let new_keys: HashSet<Keycode> = events
             .keyboard_state()
             .pressed_scancodes()
-            .filter_map(Keycode::from_scancode)
+            .filter_map(|sc| Keycode::from_scancode(sc, SDL_Keymod(Mod::NOMOD.bits()), false))
             .collect();
 
         let compare_keys = &new_keys - &self.old_keys;
@@ -85,16 +87,16 @@ impl Keyboard {
                 &Keycode::X => (0x3808, 0x01),
                 &Keycode::Y => (0x3808, 0x02),
                 &Keycode::Z => (0x3808, 0x04),
-                &Keycode::Num0 | &Keycode::Kp0 => (0x3810, 0x01),
-                &Keycode::Num1 | &Keycode::Kp1 => (0x3810, 0x02),
-                &Keycode::Num2 | &Keycode::Kp2 => (0x3810, 0x04),
-                &Keycode::Num3 | &Keycode::Kp3 => (0x3810, 0x08),
-                &Keycode::Num4 | &Keycode::Kp4 => (0x3810, 0x10),
-                &Keycode::Num5 | &Keycode::Kp5 => (0x3810, 0x20),
-                &Keycode::Num6 | &Keycode::Kp6 => (0x3810, 0x40),
-                &Keycode::Num7 | &Keycode::Kp7 => (0x3810, 0x80),
-                &Keycode::Num8 | &Keycode::Kp8 | Keycode::LeftParen => (0x3820, 0x01),
-                &Keycode::Num9 | &Keycode::Kp9 | Keycode::RightParen => (0x3820, 0x02),
+                &Keycode::_0 | &Keycode::Kp0 => (0x3810, 0x01),
+                &Keycode::_1 | &Keycode::Kp1 => (0x3810, 0x02),
+                &Keycode::_2 | &Keycode::Kp2 => (0x3810, 0x04),
+                &Keycode::_3 | &Keycode::Kp3 => (0x3810, 0x08),
+                &Keycode::_4 | &Keycode::Kp4 => (0x3810, 0x10),
+                &Keycode::_5 | &Keycode::Kp5 => (0x3810, 0x20),
+                &Keycode::_6 | &Keycode::Kp6 => (0x3810, 0x40),
+                &Keycode::_7 | &Keycode::Kp7 => (0x3810, 0x80),
+                &Keycode::_8 | &Keycode::Kp8 | Keycode::LeftParen => (0x3820, 0x01),
+                &Keycode::_9 | &Keycode::Kp9 | Keycode::RightParen => (0x3820, 0x02),
                 &Keycode::KpMultiply => (0x3820, 0x04),
                 &Keycode::Colon => (0x3820, 0x04),
                 &Keycode::KpPlus => (0x3820, 0x08),
@@ -117,7 +119,7 @@ impl Keyboard {
             };
             if keys.contains(&Keycode::LCtrl)
                 && keys.contains(&Keycode::RAlt)
-                && keys.contains(&Keycode::Num0)
+                && keys.contains(&Keycode::_0)
             {
                 msg = (0x3801, 0x01)
             };
