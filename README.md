@@ -5,7 +5,7 @@
 
 TRuSt-80 is a cross-platform TRS-80 (model 1) emulator, based on my [Z80 emulator](https://github.com/nicolasbauw/ZilogZ80).
 It has a working QWERTY layout keyboard (hint : for " type shift+2 like on the original layout), can run Level 1 and Level 2 basic, and load .cas tape images.
-You will need a ROM, and the [AnotherMansTreasureMIB64C2X3Y.ttf](https://www.kreativekorp.com/swdownload/fonts/retro/amtreasure.zip) font. If not already installed, you will need sdl2 and sdl2_ttf libraries.
+You will need a ROM, and the [AnotherMansTreasureMIB64C2X3Y.ttf](https://www.kreativekorp.com/swdownload/fonts/retro/amtreasure.zip) font. If not already installed, you will need sdl3 and sdl3_ttf libraries.
 
 
 ![Screenshot](assets/TRuSt-80-2.png)
