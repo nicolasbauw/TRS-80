@@ -1,4 +1,4 @@
-use sdl2::{event::Event, keyboard::Keycode};
+use sdl3::{event::Event, keyboard::Keycode};
 use std::{error::Error, process::ExitCode};
 mod cassette;
 mod config;
@@ -21,18 +21,18 @@ fn main() -> ExitCode {
 fn launch() -> Result<(), Box<dyn Error>> {
     // Setting up SDL
     let config = config::load_config_file()?;
-    let sdl_context = sdl2::init()?;
+    let sdl_context = sdl3::init()?;
     let video_subsystem = sdl_context.video()?;
-    let display_mode = video_subsystem.current_display_mode(0)?;
+    let display_mode = video_subsystem.get_primary_display()?.get_mode()?;
     let refresh_rate = display_mode.refresh_rate;
-    let ttf_context = sdl2::ttf::init()?;
+    let ttf_context = sdl3::ttf::init()?;
 
     let window = video_subsystem
         .window("TRuSt-80", config.display.width, config.display.height)
         .position_centered()
         .build()?;
 
-    let Ok(font) = ttf_context.load_font(config.display.font, config.display.font_size) else {
+    let Ok(font) = ttf_context.load_font(config.display.font, config.display.font_size as f32) else {
         return Err(Box::new(MachineError::FontError));
     };
 
