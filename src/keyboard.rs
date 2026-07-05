@@ -52,69 +52,70 @@ impl Keyboard {
         }
 
         for k in keys.iter() {
-            msg = match k {
+            let logical_key = to_logical_scancode(*k, azerty, shift);
+            msg = match logical_key {
                 // --- LETTRES (Positions physiques basées sur le standard QWERTY) ---
-                &Scancode::A => (0x3801, 0x02),
-                &Scancode::B => (0x3801, 0x04),
-                &Scancode::C => (0x3801, 0x08),
-                &Scancode::D => (0x3801, 0x10),
-                &Scancode::E => (0x3801, 0x20),
-                &Scancode::F => (0x3801, 0x40),
-                &Scancode::G => (0x3801, 0x80),
-                &Scancode::H => (0x3802, 0x01),
-                &Scancode::I => (0x3802, 0x02),
-                &Scancode::J => (0x3802, 0x04),
-                &Scancode::K => (0x3802, 0x08),
-                &Scancode::L => (0x3802, 0x10),
-                &Scancode::M => (0x3802, 0x20),
-                &Scancode::N => (0x3802, 0x40),
-                &Scancode::O => (0x3802, 0x80),
-                &Scancode::P => (0x3804, 0x01),
-                &Scancode::Q => (0x3804, 0x02),
-                &Scancode::R => (0x3804, 0x04),
-                &Scancode::S => (0x3804, 0x08),
-                &Scancode::T => (0x3804, 0x10),
-                &Scancode::U => (0x3804, 0x20),
-                &Scancode::V => (0x3804, 0x40),
-                &Scancode::W => (0x3804, 0x80),
-                &Scancode::X => (0x3808, 0x01),
-                &Scancode::Y => (0x3808, 0x02),
-                &Scancode::Z => (0x3808, 0x04),
+                Scancode::A => (0x3801, 0x02),
+                Scancode::B => (0x3801, 0x04),
+                Scancode::C => (0x3801, 0x08),
+                Scancode::D => (0x3801, 0x10),
+                Scancode::E => (0x3801, 0x20),
+                Scancode::F => (0x3801, 0x40),
+                Scancode::G => (0x3801, 0x80),
+                Scancode::H => (0x3802, 0x01),
+                Scancode::I => (0x3802, 0x02),
+                Scancode::J => (0x3802, 0x04),
+                Scancode::K => (0x3802, 0x08),
+                Scancode::L => (0x3802, 0x10),
+                Scancode::M => (0x3802, 0x20),
+                Scancode::N => (0x3802, 0x40),
+                Scancode::O => (0x3802, 0x80),
+                Scancode::P => (0x3804, 0x01),
+                Scancode::Q => (0x3804, 0x02),
+                Scancode::R => (0x3804, 0x04),
+                Scancode::S => (0x3804, 0x08),
+                Scancode::T => (0x3804, 0x10),
+                Scancode::U => (0x3804, 0x20),
+                Scancode::V => (0x3804, 0x40),
+                Scancode::W => (0x3804, 0x80),
+                Scancode::X => (0x3808, 0x01),
+                Scancode::Y => (0x3808, 0x02),
+                Scancode::Z => (0x3808, 0x04),
 
                 // --- CHIFFRES (Ligne supérieure + Pavé numérique) ---
-                &Scancode::_0 | &Scancode::Kp0 => (0x3810, 0x01),
-                &Scancode::_1 | &Scancode::Kp1 => (0x3810, 0x02),
-                &Scancode::_2 | &Scancode::Kp2 => (0x3810, 0x04),
-                &Scancode::_3 | &Scancode::Kp3 => (0x3810, 0x08),
-                &Scancode::_4 | &Scancode::Kp4 => (0x3810, 0x10),
-                &Scancode::_5 | &Scancode::Kp5 => (0x3810, 0x20),
-                &Scancode::_6 | &Scancode::Kp6 => (0x3810, 0x40),
-                &Scancode::_7 | &Scancode::Kp7 => (0x3810, 0x80),
-                &Scancode::_8 | &Scancode::Kp8 => (0x3820, 0x01),
-                &Scancode::_9 | &Scancode::Kp9 => (0x3820, 0x02),
+                Scancode::_0 | Scancode::Kp0 => (0x3810, 0x01),
+                Scancode::_1 | Scancode::Kp1 => (0x3810, 0x02),
+                Scancode::_2 | Scancode::Kp2 => (0x3810, 0x04),
+                Scancode::_3 | Scancode::Kp3 => (0x3810, 0x08),
+                Scancode::_4 | Scancode::Kp4 => (0x3810, 0x10),
+                Scancode::_5 | Scancode::Kp5 => (0x3810, 0x20),
+                Scancode::_6 | Scancode::Kp6 => (0x3810, 0x40),
+                Scancode::_7 | Scancode::Kp7 => (0x3810, 0x80),
+                Scancode::_8 | Scancode::Kp8 => (0x3820, 0x01),
+                Scancode::_9 | Scancode::Kp9 => (0x3820, 0x02),
 
                 // --- SYMBOLES ET PAVÉ NUMÉRIQUE ---
-                &Scancode::KpMultiply => (0x3820, 0x04),
-                &Scancode::KpPlus => (0x3820, 0x08),
-                &Scancode::KpMinus => (0x3820, 0x20),
-                &Scancode::KpPeriod => (0x3820, 0x40),
-                &Scancode::KpDivide => (0x3820, 0x80),
+                Scancode::KpMultiply => (0x3820, 0x04),
+                Scancode::KpPlus => (0x3820, 0x08),
+                Scancode::KpMinus => (0x3820, 0x20),
+                Scancode::KpPeriod => (0x3820, 0x40),
+                Scancode::Slash | Scancode::KpDivide => (0x3820, 0x80),
 
                 // Mappage des touches de ponctuation principales
-                &Scancode::Semicolon => (0x3820, 0x08), // Touche ';' / ':'
-                &Scancode::Comma => (0x3820, 0x10),     // Touche ',' / '<'
-                &Scancode::Equals => (0x3820, 0x20),    // Touche '=' / '+'
-                &Scancode::Grave => (0x3801, 0x01), // Touche ` / ~ (utilisée pour le '@' du TRS-80)
+                Scancode::Semicolon => (0x3820, 0x08), // Touche ';' / ':'
+                Scancode::Comma => (0x3820, 0x10),     // Touche ',' / '<'
+                Scancode::Equals => (0x3820, 0x20),    // Touche '=' / '+'
+                Scancode::Grave => (0x3801, 0x01), // Touche ` / ~ (utilisée pour le '@' du TRS-80)
 
                 // --- NAVIGATION / CONTRÔLE ---
-                &Scancode::Return | &Scancode::KpEnter => (0x3840, 0x01),
-                &Scancode::Home => (0x3840, 0x02),
-                &Scancode::End => (0x3840, 0x04),
-                &Scancode::Up => (0x3840, 0x08),
-                &Scancode::Down => (0x3840, 0x10),
-                &Scancode::Left | &Scancode::Backspace => (0x3840, 0x20),
-                &Scancode::Right => (0x3840, 0x40),
-                &Scancode::Space => (0x3840, 0x80),
+                Scancode::Return | Scancode::KpEnter => (0x3840, 0x01),
+                Scancode::Home => (0x3840, 0x02),
+                Scancode::End => (0x3840, 0x04),
+                Scancode::Up => (0x3840, 0x08),
+                Scancode::Down => (0x3840, 0x10),
+                Scancode::Left | Scancode::Backspace => (0x3840, 0x20),
+                Scancode::Right => (0x3840, 0x40),
+                Scancode::Space => (0x3840, 0x80),
                 _ => continue,
             };
 
@@ -142,5 +143,26 @@ impl Keyboard {
 
         self.last = msg.0;
         self.shift = shift;
+    }
+}
+
+fn to_logical_scancode(physical: Scancode, azerty: bool, shift: bool) -> Scancode {
+    if !azerty {
+        return physical;
+    }
+
+    // On matche maintenant sur le couple (Touche, Shift)
+    match (physical, shift) {
+        (Scancode::Q, _) => Scancode::A, // Touche physique A sur AZERTY
+        (Scancode::A, _) => Scancode::Q, // Touche physique Q sur AZERTY
+        (Scancode::W, _) => Scancode::Z, // Touche physique Z sur AZERTY
+        (Scancode::Z, _) => Scancode::W, // Touche physique W sur AZERTY
+        (Scancode::Semicolon, _) => Scancode::M, // Touche physique M sur AZERTY
+
+        // --- Gestion spécifique de la touche physique M ---
+        (Scancode::M, false) => Scancode::Comma, // M seul => Virgule (,)
+        (Scancode::M, true) => Scancode::Slash, // SHIFT + M => Point d'interrogation (?) via le Slash QWERTY
+
+        _ => physical, // Tout le reste (chiffres, flèches...) reste identique
     }
 }
