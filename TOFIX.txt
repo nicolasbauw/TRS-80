@@ -1,0 +1,7 @@
+le - fait un =
+parenthèse fermée fait un espace
+le : fait un +
+le = fait un /
+le SHIFT = fait un ?
+< et > ne font rien
+SHIFT @ fait un @ et pas un #
