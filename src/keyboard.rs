@@ -162,6 +162,7 @@ impl Keyboard {
 
 fn to_logical_scancode(physical: Scancode, azerty: bool, physical_shift: bool) -> (Scancode, bool) {
     if !azerty {
+        println!("Key pressed : {}", physical);
         return (physical, physical_shift);
     }
 
@@ -208,11 +209,15 @@ fn to_logical_scancode(physical: Scancode, azerty: bool, physical_shift: bool) -
         // --- LIGNE NUMÉRIQUE : Quand SHIFT n'est PAS pressé (L'utilisateur veut le SYMBOLE) ---
         // On renvoie la touche QWERTY équivalente et on FORCE le shift si nécessaire
         (Scancode::_1, false) => (Scancode::_6, true), // & (Shift + 7)
-        (Scancode::_3, false) => (Scancode::Apostrophe, true), // " (Shift + ')
+        (Scancode::_2, false) => (Scancode::Apostrophe, false),
+        (Scancode::_3, false) => (Scancode::_2, true), // " (Shift + ')
         (Scancode::_4, false) => (Scancode::Apostrophe, false), // ' (Pas de shift)
-        (Scancode::_5, false) => (Scancode::_9, true), // ( (Shift + 9)
-        (Scancode::_6, false) => (Scancode::Minus, false), // - (Pas de shift)
-        (Scancode::_8, false) => (Scancode::Minus, true), // _ (Shift + -)
+        (Scancode::_5, false) => (Scancode::_8, true), // ( (Shift + 9)
+        (Scancode::_6, false) => (Scancode::Apostrophe, false),
+        (Scancode::_7, false) => (Scancode::Apostrophe, false),
+        (Scancode::_8, false) => (Scancode::_1, true), // _ (Shift + -)
+        (Scancode::_9, false) => (Scancode::Apostrophe, false),
+        (Scancode::_0, false) => (Scancode::Apostrophe, false),
         (Scancode::Minus, false) => (Scancode::_0, true), // ) (Shift + 0)
 
         _ => (physical, physical_shift),
