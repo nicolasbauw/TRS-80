@@ -52,7 +52,19 @@ impl Keyboard {
         }
 
         for k in keys.iter() {
-            let logical_key = to_logical_scancode(*k, azerty, shift);
+            // On ignore les modificateurs physiques bruts, leur logique est déjà portée par les autres touches
+            if *k == Scancode::LShift || *k == Scancode::RShift {
+                continue;
+            }
+
+            // 1. On récupère le scancode ET le shift corrigés pour cette touche
+            let (logical_key, logical_shift) = to_logical_scancode(*k, azerty, shift);
+
+            // 2. On applique dynamiquement l'état Shift requis par la touche cible dans le bus
+            if azerty {
+                bus.write_byte(0x3880, if logical_shift { 0x01 } else { 0x00 });
+                shift = logical_shift; // On met à jour la variable pour la persistance en fin de frame
+            }
             msg = match logical_key {
                 // --- LETTRES (Positions physiques basées sur le standard QWERTY) ---
                 Scancode::A => (0x3801, 0x02),
@@ -97,15 +109,17 @@ impl Keyboard {
                 // --- SYMBOLES ET PAVÉ NUMÉRIQUE ---
                 Scancode::KpMultiply => (0x3820, 0x04),
                 Scancode::KpPlus => (0x3820, 0x08),
-                Scancode::KpMinus => (0x3820, 0x20),
-                Scancode::KpPeriod => (0x3820, 0x40),
-                Scancode::Slash | Scancode::KpDivide => (0x3820, 0x80),
+
+                // --- AJUSTEMENTS SYMBOLES (Ajoute les versions standards à côté du pavé numérique) ---
+                Scancode::Slash | Scancode::KpDivide => (0x3820, 0x80), // Reçoit le '/' et le '?'
+                Scancode::Minus | Scancode::KpMinus => (0x3820, 0x20),  // Reçoit le '-' et le '_'
+                Scancode::Period | Scancode::KpPeriod => (0x3820, 0x40), // Reçoit le '.'
 
                 // Mappage des touches de ponctuation principales
-                Scancode::Semicolon => (0x3820, 0x08), // Touche ';' / ':'
-                Scancode::Comma => (0x3820, 0x10),     // Touche ',' / '<'
-                Scancode::Equals => (0x3820, 0x20),    // Touche '=' / '+'
-                Scancode::Grave => (0x3801, 0x01), // Touche ` / ~ (utilisée pour le '@' du TRS-80)
+                Scancode::Semicolon => (0x3820, 0x08), // Gère ';' et ':'
+                Scancode::Comma => (0x3820, 0x10),     // Gère ','
+                Scancode::Equals => (0x3820, 0x20),    // Gère '=' et '+'
+                Scancode::Grave => (0x3801, 0x01),
 
                 // --- NAVIGATION / CONTRÔLE ---
                 Scancode::Return | Scancode::KpEnter => (0x3840, 0x01),
@@ -146,23 +160,61 @@ impl Keyboard {
     }
 }
 
-fn to_logical_scancode(physical: Scancode, azerty: bool, shift: bool) -> Scancode {
+fn to_logical_scancode(physical: Scancode, azerty: bool, physical_shift: bool) -> (Scancode, bool) {
     if !azerty {
-        return physical;
+        return (physical, physical_shift);
     }
 
-    // On matche maintenant sur le couple (Touche, Shift)
-    match (physical, shift) {
-        (Scancode::Q, _) => Scancode::A, // Touche physique A sur AZERTY
-        (Scancode::A, _) => Scancode::Q, // Touche physique Q sur AZERTY
-        (Scancode::W, _) => Scancode::Z, // Touche physique Z sur AZERTY
-        (Scancode::Z, _) => Scancode::W, // Touche physique W sur AZERTY
-        (Scancode::Semicolon, _) => Scancode::M, // Touche physique M sur AZERTY
+    match (physical, physical_shift) {
+        // --- LETTRES ---
+        (Scancode::Q, s) => (Scancode::A, s),
+        (Scancode::A, s) => (Scancode::Q, s),
+        (Scancode::W, s) => (Scancode::Z, s),
+        (Scancode::Z, s) => (Scancode::W, s),
+        (Scancode::Semicolon, s) => (Scancode::M, s), // Touche physique M sur AZERTY
 
-        // --- Gestion spécifique de la touche physique M ---
-        (Scancode::M, false) => Scancode::Comma, // M seul => Virgule (,)
-        (Scancode::M, true) => Scancode::Slash, // SHIFT + M => Point d'interrogation (?) via le Slash QWERTY
+        // --- PONCTUATION BASSE ---
+        // Touche physique M (, et ?)
+        (Scancode::M, false) => (Scancode::Comma, false),
+        (Scancode::M, true) => (Scancode::Slash, true), // ? (Shift + / en QWERTY)
 
-        _ => physical, // Tout le reste (chiffres, flèches...) reste identique
+        // Touche physique Comma (; et .)
+        (Scancode::Comma, false) => (Scancode::Semicolon, false),
+        (Scancode::Comma, true) => (Scancode::Period, false), // . (Pas de shift en QWERTY)
+
+        // Touche physique Period (: et /)
+        (Scancode::Period, false) => (Scancode::Semicolon, true), // : (Shift + ; en QWERTY)
+        (Scancode::Period, true) => (Scancode::Slash, false),     // / (Pas de shift en QWERTY)
+
+        // --- SYMBOLES DEMANDÉS (=, %, $) ---
+        (Scancode::Equals, false) => (Scancode::Equals, false), // =
+        (Scancode::Equals, true) => (Scancode::Equals, true),   // +
+        (Scancode::Apostrophe, true) => (Scancode::_5, true),   // % (Shift + 5 en QWERTY)
+        (Scancode::RightBracket, false) => (Scancode::_4, true), // $ (Shift + 4 en QWERTY)
+
+        // --- LIGNE NUMÉRIQUE : Quand SHIFT est pressé (L'utilisateur veut le CHIFFRE) ---
+        // On renvoie le chiffre mais on COUPE le shift (le TRS-80 veut le chiffre nu)
+        (Scancode::_1, true) => (Scancode::_1, false),
+        (Scancode::_2, true) => (Scancode::_2, false),
+        (Scancode::_3, true) => (Scancode::_3, false),
+        (Scancode::_4, true) => (Scancode::_4, false),
+        (Scancode::_5, true) => (Scancode::_5, false),
+        (Scancode::_6, true) => (Scancode::_6, false),
+        (Scancode::_7, true) => (Scancode::_7, false),
+        (Scancode::_8, true) => (Scancode::_8, false),
+        (Scancode::_9, true) => (Scancode::_9, false),
+        (Scancode::_0, true) => (Scancode::_0, false),
+
+        // --- LIGNE NUMÉRIQUE : Quand SHIFT n'est PAS pressé (L'utilisateur veut le SYMBOLE) ---
+        // On renvoie la touche QWERTY équivalente et on FORCE le shift si nécessaire
+        (Scancode::_1, false) => (Scancode::_6, true), // & (Shift + 7)
+        (Scancode::_3, false) => (Scancode::Apostrophe, true), // " (Shift + ')
+        (Scancode::_4, false) => (Scancode::Apostrophe, false), // ' (Pas de shift)
+        (Scancode::_5, false) => (Scancode::_9, true), // ( (Shift + 9)
+        (Scancode::_6, false) => (Scancode::Minus, false), // - (Pas de shift)
+        (Scancode::_8, false) => (Scancode::Minus, true), // _ (Shift + -)
+        (Scancode::Minus, false) => (Scancode::_0, true), // ) (Shift + 0)
+
+        _ => (physical, physical_shift),
     }
 }
