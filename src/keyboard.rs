@@ -17,9 +17,9 @@ impl Keyboard {
         }
     }
 
-    pub fn update(&mut self, events: EventPump, bus: &mut Bus) {
+    pub fn update(&mut self, events: EventPump, bus: &mut Bus, azerty: bool) {
         self.clear_ram(bus);
-        self.set_ram(events, bus);
+        self.set_ram(events, bus, azerty);
     }
 
     fn clear_ram(&mut self, bus: &mut Bus) {
@@ -30,7 +30,7 @@ impl Keyboard {
         }
     }
 
-    fn set_ram(&mut self, events: EventPump, bus: &mut Bus) {
+    fn set_ram(&mut self, events: EventPump, bus: &mut Bus, azerty: bool) {
         // Lecture directe des états physiques (Scancodes) sans traduction logicielle
         let new_keys: HashSet<Scancode> = events.keyboard_state().pressed_scancodes().collect();
 

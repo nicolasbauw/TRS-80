@@ -21,6 +21,7 @@ fn main() -> ExitCode {
 fn launch() -> Result<(), Box<dyn Error>> {
     // Setting up SDL
     let config = config::load_config_file()?;
+    let azerty = config.keyboard.azerty.unwrap_or(false);
     let sdl_context = sdl3::init()?;
     let video_subsystem = sdl_context.video()?;
     let display_mode = video_subsystem.get_primary_display()?.get_mode()?;
@@ -32,7 +33,8 @@ fn launch() -> Result<(), Box<dyn Error>> {
         .position_centered()
         .build()?;
 
-    let Ok(font) = ttf_context.load_font(config.display.font, config.display.font_size as f32) else {
+    let Ok(font) = ttf_context.load_font(config.display.font, config.display.font_size as f32)
+    else {
         return Err(Box::new(MachineError::FontError));
     };
 
@@ -59,7 +61,7 @@ fn launch() -> Result<(), Box<dyn Error>> {
         }
 
         // Handle SDL keyboard events (keyboard MMIO peripheral)
-        trs80.keyboard.update(events, &mut trs80.cpu.bus);
+        trs80.keyboard.update(events, &mut trs80.cpu.bus, azerty);
 
         // Update display
         trs80.display.update(&trs80.cpu.bus, &font)?;

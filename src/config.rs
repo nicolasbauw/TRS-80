@@ -10,6 +10,7 @@ pub struct Config {
     pub memory: MemConfig,
     pub storage: StorageConfig,
     pub debug: Debug,
+    pub keyboard: Keyboard,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -34,6 +35,11 @@ pub struct StorageConfig {
 #[derive(Debug, Deserialize, Clone)]
 pub struct Debug {
     pub iodevices: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Keyboard {
+    pub azerty: Option<bool>,
 }
 
 pub fn load_config_file() -> Result<Config, MachineError> {

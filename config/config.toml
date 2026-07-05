@@ -13,3 +13,6 @@ tape_path = "bin/"
 
 [debug]
 iodevices = false
+
+[keyboard]
+azerty = true
