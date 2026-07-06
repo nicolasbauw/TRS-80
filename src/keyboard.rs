@@ -162,7 +162,6 @@ impl Keyboard {
 
 fn to_logical_scancode(physical: Scancode, azerty: bool, physical_shift: bool) -> (Scancode, bool) {
     if !azerty {
-        println!("Key pressed : {}", physical);
         return (physical, physical_shift);
     }
 
@@ -172,29 +171,48 @@ fn to_logical_scancode(physical: Scancode, azerty: bool, physical_shift: bool) -
         (Scancode::A, s) => (Scancode::Q, s),
         (Scancode::W, s) => (Scancode::Z, s),
         (Scancode::Z, s) => (Scancode::W, s),
-        (Scancode::Semicolon, s) => (Scancode::M, s), // Touche physique M sur AZERTY
+        (Scancode::Semicolon, s) => (Scancode::M, s), // Touche physique M sur AZERTY Mac (lettre M)
 
-        // --- PONCTUATION BASSE ---
-        // Touche physique M (, et ?)
-        (Scancode::M, false) => (Scancode::Comma, false),
-        (Scancode::M, true) => (Scancode::Slash, true), // ? (Shift + / en QWERTY)
+        // --- PONCTUATION BASSE (AZERTY MAC FR) ---
+        // Touche physique M (?, et ,)
+        (Scancode::M, false) => (Scancode::Comma, false), // ',' -> TRS-80 ',' (0x3820, 0x10)
+        (Scancode::M, true) => (Scancode::Slash, true), // '?' -> TRS-80 Shift + '/' (0x3820, 0x80)
 
-        // Touche physique Comma (; et .)
-        (Scancode::Comma, false) => (Scancode::Semicolon, false),
-        (Scancode::Comma, true) => (Scancode::Period, false), // . (Pas de shift en QWERTY)
+        // Touche physique Comma (. et ;)
+        (Scancode::Comma, false) => (Scancode::Semicolon, false), // ';' -> TRS-80 ';' (0x3820, 0x08)
+        (Scancode::Comma, true) => (Scancode::Period, false), // '.' -> TRS-80 '.' (0x3820, 0x40)
 
-        // Touche physique Period (: et /)
-        (Scancode::Period, false) => (Scancode::Semicolon, true), // : (Shift + ; en QWERTY)
-        (Scancode::Period, true) => (Scancode::Slash, false),     // / (Pas de shift en QWERTY)
+        // Touche physique Period (/ et :)
+        (Scancode::Period, false) => (Scancode::Period, false), // ':' -> TRS-80 ':' (0x3820, 0x04)
+        (Scancode::Period, true) => (Scancode::Slash, false),   // '/' -> TRS-80 '/' (0x3820, 0x80)
 
-        // --- SYMBOLES DEMANDÉS (=, %, $) ---
-        (Scancode::Equals, false) => (Scancode::Equals, false), // =
-        (Scancode::Equals, true) => (Scancode::Equals, true),   // +
-        (Scancode::Apostrophe, true) => (Scancode::_5, true),   // % (Shift + 5 en QWERTY)
-        (Scancode::RightBracket, false) => (Scancode::_4, true), // $ (Shift + 4 en QWERTY)
+        // Touche physique Slash (+ et =)
+        (Scancode::Slash, false) => (Scancode::Equals, false), // '=' -> TRS-80 Shift + '-' (0x3820, 0x20)
+        (Scancode::Slash, true) => (Scancode::Equals, true), // '+' -> TRS-80 Shift + ';' (0x3820, 0x08)
+
+        // --- HAUT DROITE LIGNE NUMÉRIQUE ---
+        // Touche physique Equals (contient ) et ° sur AZERTY Mac)
+        (Scancode::Equals, false) => (Scancode::_9, true), // ')' -> TRS-80 Shift + '9' (0x3820, 0x02)
+        (Scancode::Equals, true) => (Scancode::Equals, true), // '°' (non géré)
+
+        // Touche physique Minus (contient - et _ sur AZERTY Mac)
+        (Scancode::Minus, false) => (Scancode::Minus, false), // '-' -> TRS-80 '-' (0x3820, 0x20)
+        (Scancode::Minus, true) => (Scancode::Minus, true), // '_' -> TRS-80 Shift + '-' (0x3820, 0x20)
+
+        // --- TOUCHES ENCADRÉES (IMAGE REFERENCE) ---
+        // Touche physique Grave (tout en haut à gauche, contient @ et # sur AZERTY Mac)
+        (Scancode::Grave, false) => (Scancode::Grave, false), // '@' -> TRS-80 '@' (0x3801, 0x01)
+        (Scancode::Grave, true) => (Scancode::_3, true), // '#' -> TRS-80 Shift + '3' (0x3810, 0x08)
+
+        // Touche physique NonUsBackslash (en bas à gauche à côté de W/Q, contient < et > sur AZERTY Mac)
+        (Scancode::NonUsBackslash, false) => (Scancode::Comma, true), // '<' -> TRS-80 Shift + ',' (0x3820, 0x10)
+        (Scancode::NonUsBackslash, true) => (Scancode::Period, true), // '>' -> TRS-80 Shift + '.' (0x3820, 0x40)
+
+        // --- AUTRES TOUCHES ---
+        (Scancode::Apostrophe, true) => (Scancode::_5, true), // '%' (Shift + 5 en QWERTY)
+        (Scancode::RightBracket, false) => (Scancode::_4, true), // '$' (Shift + 4 en QWERTY)
 
         // --- LIGNE NUMÉRIQUE : Quand SHIFT est pressé (L'utilisateur veut le CHIFFRE) ---
-        // On renvoie le chiffre mais on COUPE le shift (le TRS-80 veut le chiffre nu)
         (Scancode::_1, true) => (Scancode::_1, false),
         (Scancode::_2, true) => (Scancode::_2, false),
         (Scancode::_3, true) => (Scancode::_3, false),
@@ -206,19 +224,11 @@ fn to_logical_scancode(physical: Scancode, azerty: bool, physical_shift: bool) -
         (Scancode::_9, true) => (Scancode::_9, false),
         (Scancode::_0, true) => (Scancode::_0, false),
 
-        // --- LIGNE NUMÉRIQUE : Quand SHIFT n'est PAS pressé (L'utilisateur veut le SYMBOLE) ---
-        // On renvoie la touche QWERTY équivalente et on FORCE le shift si nécessaire
-        (Scancode::_1, false) => (Scancode::_6, true), // & (Shift + 7)
-        (Scancode::_2, false) => (Scancode::Apostrophe, false), // Nothing
-        (Scancode::_3, false) => (Scancode::_2, true), // " (Shift + ')
-        (Scancode::_4, false) => (Scancode::Apostrophe, false), // ' (Pas de shift)
-        (Scancode::_5, false) => (Scancode::_8, true), // ( (Shift + 9)
-        (Scancode::_6, false) => (Scancode::Apostrophe, false), // Nothing
-        (Scancode::_7, false) => (Scancode::Apostrophe, false), // Nothing
-        (Scancode::_8, false) => (Scancode::_1, true), // _ (Shift + -)
-        (Scancode::_9, false) => (Scancode::Apostrophe, false), // Nothing
-        (Scancode::_0, false) => (Scancode::Apostrophe, false), // Nothing
-        (Scancode::Minus, false) => (Scancode::_0, true), // ) (Shift + 0)
+        // --- LIGNE NUMÉRIQUE (SYMBOLES AZERTY MAC) ---
+        (Scancode::_1, false) => (Scancode::_6, true), // & -> TRS-80 Shift + 6
+        (Scancode::_3, false) => (Scancode::_2, true), // " -> TRS-80 Shift + 2
+        (Scancode::_4, false) => (Scancode::Apostrophe, false), // '
+        (Scancode::_5, false) => (Scancode::_8, true), // ( -> TRS-80 Shift + 8
 
         _ => (physical, physical_shift),
     }
