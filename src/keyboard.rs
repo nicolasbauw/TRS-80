@@ -183,21 +183,21 @@ fn to_logical_scancode(physical: Scancode, azerty: bool, physical_shift: bool) -
         (Scancode::Comma, true) => (Scancode::Period, false), // '.' -> TRS-80 '.' (0x3820, 0x40)
 
         // Touche physique Period (/ et :)
-        (Scancode::Period, false) => (Scancode::Period, false), // ':' -> TRS-80 ':' (0x3820, 0x04)
-        (Scancode::Period, true) => (Scancode::Slash, false),   // '/' -> TRS-80 '/' (0x3820, 0x80)
+        (Scancode::Period, false) => (Scancode::KpMultiply, false), // ':' -> TRS-80 ':' (0x3820, 0x04) via KpMultiply
+        (Scancode::Period, true) => (Scancode::Slash, false), // '/' -> TRS-80 '/' (0x3820, 0x80)
 
         // Touche physique Slash (+ et =)
-        (Scancode::Slash, false) => (Scancode::Equals, false), // '=' -> TRS-80 Shift + '-' (0x3820, 0x20)
-        (Scancode::Slash, true) => (Scancode::Equals, true), // '+' -> TRS-80 Shift + ';' (0x3820, 0x08)
+        (Scancode::Slash, false) => (Scancode::Equals, true), // '=' -> TRS-80 Shift + '-' (0x3820, 0x20 avec Shift)
+        (Scancode::Slash, true) => (Scancode::Semicolon, true), // '+' -> TRS-80 Shift + ';' (0x3820, 0x08 avec Shift)
 
         // --- HAUT DROITE LIGNE NUMÉRIQUE ---
-        // Touche physique Equals (contient ) et ° sur AZERTY Mac)
-        (Scancode::Equals, false) => (Scancode::_9, true), // ')' -> TRS-80 Shift + '9' (0x3820, 0x02)
-        (Scancode::Equals, true) => (Scancode::Equals, true), // '°' (non géré)
+        // Touche physique Equals (contient - et _ sur AZERTY Mac)
+        (Scancode::Equals, false) => (Scancode::Minus, false), // '-' -> TRS-80 '-' (0x3820, 0x20)
+        (Scancode::Equals, true) => (Scancode::Minus, true), // '_' -> TRS-80 Shift + '-' (0x3820, 0x20)
 
-        // Touche physique Minus (contient - et _ sur AZERTY Mac)
-        (Scancode::Minus, false) => (Scancode::Minus, false), // '-' -> TRS-80 '-' (0x3820, 0x20)
-        (Scancode::Minus, true) => (Scancode::Minus, true), // '_' -> TRS-80 Shift + '-' (0x3820, 0x20)
+        // Touche physique Minus (contient ) et ° sur AZERTY Mac)
+        (Scancode::Minus, false) => (Scancode::_9, true), // ')' -> TRS-80 Shift + '9' (0x3820, 0x02)
+        (Scancode::Minus, true) => (Scancode::Equals, true), // '°' (non géré)
 
         // --- TOUCHES ENCADRÉES (IMAGE REFERENCE) ---
         // Touche physique Grave (tout en haut à gauche, contient @ et # sur AZERTY Mac)
@@ -229,6 +229,7 @@ fn to_logical_scancode(physical: Scancode, azerty: bool, physical_shift: bool) -
         (Scancode::_3, false) => (Scancode::_2, true), // " -> TRS-80 Shift + 2
         (Scancode::_4, false) => (Scancode::Apostrophe, false), // '
         (Scancode::_5, false) => (Scancode::_8, true), // ( -> TRS-80 Shift + 8
+        (Scancode::_8, false) => (Scancode::_1, true), // ! -> TRS-80 Shift + 1
 
         _ => (physical, physical_shift),
     }
