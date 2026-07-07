@@ -1,3 +1,0 @@
-c'est quasi parfait. Seules deux anomalies subsistent:
-- le - (près du backspace) fait un =
-- le = du pavé numérique ne fonctionne pas
