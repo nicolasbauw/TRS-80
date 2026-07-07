@@ -61,10 +61,10 @@ fn launch() -> Result<(), Box<dyn Error>> {
         }
 
         // Handle SDL keyboard events (keyboard MMIO peripheral)
-        trs80.keyboard.update(events, &mut trs80.cpu.bus, azerty);
+        trs80.keyboard.update(events, &mut trs80.bus, azerty);
 
         // Update display
-        trs80.display.update(&trs80.cpu.bus, &font)?;
+        trs80.display.update(&trs80.bus, &font)?;
 
         // Handle console commands
         trs80.console().unwrap_or_default();
