@@ -197,7 +197,7 @@ fn to_logical_scancode(physical: Scancode, azerty: bool, physical_shift: bool) -
         (Scancode::Minus, true) => (Scancode::Equals, true), // '°' (non géré)
 
         // Touche '=' du pavé numérique Mac
-        (Scancode::KpEquals, _) => (Scancode::Slash, false), // Redirige vers le '=' logique (Slash sans shift)
+        (Scancode::KpEquals, _) => (Scancode::Equals, true), // Redirige vers le '=' logique (Equals avec shift pour faire Shift + '-')
 
         // --- TOUCHES ENCADRÉES (IMAGE REFERENCE) ---
         // Touche physique Grave (tout en haut à gauche, contient @ et # sur AZERTY Mac)
