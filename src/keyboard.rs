@@ -141,10 +141,7 @@ impl Keyboard {
                 msg = (0x3801, 0x01)
             };
 
-            if keys.contains(&Scancode::KpPlus)
-                || keys.contains(&Scancode::Equals)
-                || keys.contains(&Scancode::KpMultiply)
-            {
+            if keys.contains(&Scancode::KpPlus) || keys.contains(&Scancode::KpMultiply) {
                 bus.write_byte(0x3880, 0x01);
                 shift = true;
             }
@@ -198,6 +195,9 @@ fn to_logical_scancode(physical: Scancode, azerty: bool, physical_shift: bool) -
         // Touche physique Minus (contient ) et ° sur AZERTY Mac)
         (Scancode::Minus, false) => (Scancode::_9, true), // ')' -> TRS-80 Shift + '9' (0x3820, 0x02)
         (Scancode::Minus, true) => (Scancode::Equals, true), // '°' (non géré)
+
+        // Touche '=' du pavé numérique Mac
+        (Scancode::KpEquals, _) => (Scancode::Slash, false), // Redirige vers le '=' logique (Slash sans shift)
 
         // --- TOUCHES ENCADRÉES (IMAGE REFERENCE) ---
         // Touche physique Grave (tout en haut à gauche, contient @ et # sur AZERTY Mac)
