@@ -96,7 +96,7 @@ fn launch() -> Result<(), Box<dyn Error>> {
 
     // Console window (F11): replaces the old stdin-driven terminal console
     // entirely, on the same model as bytebox's own console window.
-    let console_win = video_subsystem
+    let mut console_win = video_subsystem
         .window("TRuSt-80 Console", 900, 700)
         .position_centered()
         .hidden()
@@ -104,19 +104,25 @@ fn launch() -> Result<(), Box<dyn Error>> {
         .metal_view()
         .always_on_top()
         .build()?;
+    if let Err(e) = set_window_icon(&mut console_win) {
+        eprintln!("Can't set console window icon: {e}");
+    }
     let console_window_id = console_win.id();
     let mut console_window = ConsoleWindow::new(console_win)?;
     let mut console_visible = false;
 
     // Machine status window (F12): registers and hardware peripheral state.
-    let status_win = video_subsystem
-        .window("TRuSt-80 Status", 640, 360)
+    let mut status_win = video_subsystem
+        .window("TRuSt-80 Status", 800, 360)
         .position_centered()
         .hidden()
         .resizable()
         .metal_view()
         .always_on_top()
         .build()?;
+    if let Err(e) = set_window_icon(&mut status_win) {
+        eprintln!("Can't set status window icon: {e}");
+    }
     let status_window_id = status_win.id();
     let mut status_panel = StatusPanel::new(status_win, "trust-80 status panel device")?;
     let mut status_visible = false;
@@ -288,12 +294,18 @@ fn launch() -> Result<(), Box<dyn Error>> {
                     window_id,
                     ..
                 } if window_id == main_window_id => trs80.display.toggle_crt_panel(),
+                // Also accepted from console_window_id itself, not just the
+                // main window: opening it gives it focus (request_focus
+                // below), so a re-press of F11 to close it arrives with
+                // that window_id - the main_window_id filter alone (added
+                // to stop OTHER function keys firing from this window, see
+                // the comment on F1) would otherwise silently swallow it.
                 Event::KeyDown {
                     keycode: Some(Keycode::F11),
                     repeat: false,
                     window_id,
                     ..
-                } if window_id == main_window_id => {
+                } if window_id == main_window_id || window_id == console_window_id => {
                     console_visible = !console_visible;
                     if console_visible {
                         console_window.window_mut().show();
@@ -302,12 +314,16 @@ fn launch() -> Result<(), Box<dyn Error>> {
                         console_window.window_mut().hide();
                     }
                 }
+                // Same reasoning as F11 above, for status_window_id: the
+                // user can click into the status window even though it
+                // doesn't request focus on its own, and F12 should still
+                // close it from there.
                 Event::KeyDown {
                     keycode: Some(Keycode::F12),
                     repeat: false,
                     window_id,
                     ..
-                } if window_id == main_window_id => {
+                } if window_id == main_window_id || window_id == status_window_id => {
                     status_visible = !status_visible;
                     if status_visible {
                         status_panel.window_mut().show();
