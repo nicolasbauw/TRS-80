@@ -21,7 +21,7 @@ directories = "4.0"
 fs_extra = "1.2.0"
 
 [dependencies.sdl2]
-version = "0.35.2"
+version = "0.38.0"
 features = ["ttf"]
 
 [build-dependencies]

@@ -48,6 +48,7 @@ fn launch() -> Result<(), Box<dyn Error>> {
         // SDL events
         let mut events = sdl_context.event_pump()?;
         for event in events.poll_iter() {
+            trs80.keyboard.handle_event(&event);
             match event {
                 Event::Quit { .. }
                 | Event::KeyDown {
@@ -59,7 +60,7 @@ fn launch() -> Result<(), Box<dyn Error>> {
         }
 
         // Handle SDL keyboard events (keyboard MMIO peripheral)
-        trs80.keyboard.update(events, &mut trs80.cpu.bus);
+        trs80.keyboard.update(&mut trs80.cpu.bus);
 
         // Update display
         trs80.display.update(&trs80.cpu.bus, &font)?;

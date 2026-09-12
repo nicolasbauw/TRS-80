@@ -1,4 +1,4 @@
-use sdl2::{keyboard::Keycode, EventPump};
+use sdl2::{event::Event, keyboard::Keycode};
 use std::collections::HashSet;
 use zilog_z80::bus::Bus;
 
@@ -6,6 +6,7 @@ pub struct Keyboard {
     last: u16,
     shift: bool,
     old_keys: HashSet<Keycode>,
+    pressed: HashSet<Keycode>,
 }
 
 impl Keyboard {
@@ -14,12 +15,35 @@ impl Keyboard {
             last: 0,
             shift: false,
             old_keys: HashSet::new(),
+            pressed: HashSet::new(),
         }
     }
 
-    pub fn update(&mut self, events: EventPump, bus: &mut Bus) {
+    // sdl2's KeyboardState::pressed_scancodes() scans SDL's whole internal
+    // key state array and decodes every raw value into a Scancode; under
+    // sdl2-compat (SDL3 underneath) that array is sized/populated
+    // differently and contains values the sdl2 crate's SDL2-only enum
+    // doesn't recognize, which panics. Tracking press/release from the
+    // event stream instead sidesteps that array entirely.
+    pub fn handle_event(&mut self, event: &Event) {
+        match event {
+            Event::KeyDown {
+                keycode: Some(k), ..
+            } => {
+                self.pressed.insert(*k);
+            }
+            Event::KeyUp {
+                keycode: Some(k), ..
+            } => {
+                self.pressed.remove(k);
+            }
+            _ => {}
+        }
+    }
+
+    pub fn update(&mut self, bus: &mut Bus) {
         self.clear_ram(bus);
-        self.set_ram(events, bus);
+        self.set_ram(bus);
     }
 
     fn clear_ram(&mut self, bus: &mut Bus) {
@@ -30,13 +54,8 @@ impl Keyboard {
         }
     }
 
-    fn set_ram(&mut self, events: EventPump, bus: &mut Bus) {
-        // Reading keyboard events
-        let new_keys: HashSet<Keycode> = events
-            .keyboard_state()
-            .pressed_scancodes()
-            .filter_map(Keycode::from_scancode)
-            .collect();
+    fn set_ram(&mut self, bus: &mut Bus) {
+        let new_keys = self.pressed.clone();
 
         let compare_keys = &new_keys - &self.old_keys;
         let keys = match compare_keys.is_empty() {
@@ -93,8 +112,8 @@ impl Keyboard {
                 &Keycode::Num5 | &Keycode::Kp5 => (0x3810, 0x20),
                 &Keycode::Num6 | &Keycode::Kp6 => (0x3810, 0x40),
                 &Keycode::Num7 | &Keycode::Kp7 => (0x3810, 0x80),
-                &Keycode::Num8 | &Keycode::Kp8 | Keycode::LeftParen => (0x3820, 0x01),
-                &Keycode::Num9 | &Keycode::Kp9 | Keycode::RightParen => (0x3820, 0x02),
+                &Keycode::Num8 | &Keycode::Kp8 | &Keycode::LeftParen => (0x3820, 0x01),
+                &Keycode::Num9 | &Keycode::Kp9 | &Keycode::RightParen => (0x3820, 0x02),
                 &Keycode::KpMultiply => (0x3820, 0x04),
                 &Keycode::Colon => (0x3820, 0x04),
                 &Keycode::KpPlus => (0x3820, 0x08),
