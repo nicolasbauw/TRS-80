@@ -5,7 +5,9 @@ use std::{
     collections::HashSet, error, error::Error, fmt, path::PathBuf, sync::mpsc,
     sync::mpsc::SendError, thread, time::Duration,
 };
+use zilog_z80::bus::{Bus, FlatBus};
 use zilog_z80::cpu::CPU;
+use zilog_z80::dasm;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const HELP: &str = "
@@ -81,6 +83,7 @@ impl error::Error for MachineError {}
 
 pub struct Machine {
     pub cpu: CPU,
+    pub bus: FlatBus,
     pub display: crate::display::Display,
     pub keyboard: crate::keyboard::Keyboard,
     pub tape: crate::cassette::CassetteReader,
@@ -110,7 +113,8 @@ impl Machine {
             return Err(MachineError::DisplayError);
         };
         let mut m = Self {
-            cpu: CPU::new(0xFFFF),
+            cpu: CPU::new(),
+            bus: FlatBus::new(0xFFFF),
             display,
             keyboard: crate::keyboard::Keyboard::new(),
             tape: crate::cassette::CassetteReader::new(),
@@ -120,14 +124,12 @@ impl Machine {
             running: true,
             rom_size: 0,
         };
-        m.cpu.debug.io = m.config.debug.iodevices.unwrap_or(false);
-        m.cpu.debug.instr_in = m.config.debug.iodevices.unwrap_or(false);
-        let Ok(s) = m.cpu.bus.load_bin(&m.config.memory.rom, 0) else {
+        let Ok(s) = m.bus.load_bin(&m.config.memory.rom, 0) else {
             eprintln!("Can't load ROM file {}", &m.config.memory.rom);
             return Err(MachineError::IOError);
         };
         m.rom_size = s;
-        m.cpu.bus.set_romspace(0, (m.rom_size) as u16);
+        m.bus.set_romspace(0, (m.rom_size) as u16);
         crate::console::launch(m.cmd_channel.0.clone())?;
         Ok(m)
     }
@@ -150,10 +152,10 @@ impl Machine {
                 return;
             }
             let pc = self.cpu.reg.pc;
-            let opcode = self.cpu.bus.read_byte(pc);
+            let opcode = self.bus.read_byte(pc);
             match opcode {
                 0xdb => {
-                    let port = self.cpu.bus.read_byte(self.cpu.reg.pc + 1);
+                    let port = self.bus.read_byte(self.cpu.reg.pc + 1);
                     if let Some(true) = self.config.debug.iodevices {
                         println!("IN on port {}", port);
                     }
@@ -163,7 +165,7 @@ impl Machine {
                     }
                 }
                 0xd3 => {
-                    let port = self.cpu.bus.read_byte(self.cpu.reg.pc + 1);
+                    let port = self.bus.read_byte(self.cpu.reg.pc + 1);
                     if let Some(true) = self.config.debug.iodevices {
                         println!("OUT {} on port {}", self.cpu.reg.a, port);
                     }
@@ -173,7 +175,7 @@ impl Machine {
             }
 
             // executes slice_max_cycles number of cycles
-            if let Some(t) = self.cpu.execute_timed() {
+            if let Some(t) = self.cpu.execute_timed(&mut self.bus) {
                 thread::sleep(Duration::from_millis(t.into()));
                 break;
             }
@@ -209,8 +211,7 @@ impl Machine {
             }
             "powercycle" => {
                 self.stop();
-                self.cpu
-                    .bus
+                self.bus
                     .clear_mem_slice(self.rom_size, self.config.memory.ram as usize);
                 self.cpu.reg.pc = 0;
                 self.start();
@@ -236,17 +237,17 @@ impl Machine {
             "d" => {
                 let mut a = arg.to_u16()?;
                 for _ in 0..=20 {
-                    let d = self.cpu.dasm(a);
+                    let d = dasm::dasm(&self.bus, a);
                     println!("{:04X}    {}", a, d.0);
                     a += (d.1) as u16;
                 }
             }
             "m" => {
                 let a = arg.to_u16()?;
-                println!("{:04X}    {:02X}", a, self.cpu.bus.read_byte(a));
+                println!("{:04X}    {:02X}", a, self.bus.read_byte(a));
                 if !arg2.is_empty() {
-                    self.cpu.bus.write_byte(a, arg2.to_u8()?);
-                    println!("{:04X} -> {:02X}", a, self.cpu.bus.read_byte(a));
+                    self.bus.write_byte(a, arg2.to_u8()?);
+                    println!("{:04X} -> {:02X}", a, self.bus.read_byte(a));
                 }
             }
             "j" => {
@@ -276,7 +277,7 @@ impl Machine {
                 self.start();
             }
             "r" => {
-                print!("PC :{:#06X}\tSP : {:#06X}\nS : {}\tZ : {}\tH : {}\tP : {}\tN : {}\tC : {}\nB : {:#04X}\tC : {:#04X}\nD : {:#04X}\tE : {:#04X}\nH : {:#04X}\tL : {:#04X}\nA : {:#04X}\t(SP) : {:#06X}\n", self.cpu.reg.pc, self.cpu.reg.sp, self.cpu.reg.flags.s as i32, self.cpu.reg.flags.z as i32, self.cpu.reg.flags.h as i32, self.cpu.reg.flags.p as i32, self.cpu.reg.flags.n as i32, self.cpu.reg.flags.c as i32, self.cpu.reg.b, self.cpu.reg.c, self.cpu.reg.d, self.cpu.reg.e, self.cpu.reg.h, self.cpu.reg.l, self.cpu.reg.a, self.cpu.bus.read_word(self.cpu.reg.sp))
+                print!("PC :{:#06X}\tSP : {:#06X}\nS : {}\tZ : {}\tH : {}\tP : {}\tN : {}\tC : {}\nB : {:#04X}\tC : {:#04X}\nD : {:#04X}\tE : {:#04X}\nH : {:#04X}\tL : {:#04X}\nA : {:#04X}\t(SP) : {:#06X}\n", self.cpu.reg.pc, self.cpu.reg.sp, self.cpu.reg.flags.s as i32, self.cpu.reg.flags.z as i32, self.cpu.reg.flags.h as i32, self.cpu.reg.flags.p as i32, self.cpu.reg.flags.n as i32, self.cpu.reg.flags.c as i32, self.cpu.reg.b, self.cpu.reg.c, self.cpu.reg.d, self.cpu.reg.e, self.cpu.reg.h, self.cpu.reg.l, self.cpu.reg.a, self.bus.read_word(self.cpu.reg.sp))
             }
             _ => {}
         }

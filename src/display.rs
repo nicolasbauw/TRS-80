@@ -21,7 +21,7 @@ impl Display {
 
     pub fn update(
         &mut self,
-        bus: &zilog_z80::bus::Bus,
+        bus: &zilog_z80::bus::FlatBus,
         font: &sdl2::ttf::Font,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.canvas.clear();
@@ -32,7 +32,7 @@ impl Display {
 
     fn draw(
         &mut self,
-        bus: &zilog_z80::bus::Bus,
+        bus: &zilog_z80::bus::FlatBus,
         font: &sdl2::ttf::Font,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let bytes = bus.read_mem_slice(0x3C00, 0x4000);

@@ -1,6 +1,6 @@
 use sdl2::{event::Event, keyboard::Keycode};
 use std::collections::HashSet;
-use zilog_z80::bus::Bus;
+use zilog_z80::bus::{Bus, FlatBus};
 
 pub struct Keyboard {
     last: u16,
@@ -41,12 +41,12 @@ impl Keyboard {
         }
     }
 
-    pub fn update(&mut self, bus: &mut Bus) {
+    pub fn update(&mut self, bus: &mut FlatBus) {
         self.clear_ram(bus);
         self.set_ram(bus);
     }
 
-    fn clear_ram(&mut self, bus: &mut Bus) {
+    fn clear_ram(&mut self, bus: &mut FlatBus) {
         bus.write_byte(self.last, 0);
         bus.write_byte(0x387f, 0);
         if self.shift {
@@ -54,7 +54,7 @@ impl Keyboard {
         }
     }
 
-    fn set_ram(&mut self, bus: &mut Bus) {
+    fn set_ram(&mut self, bus: &mut FlatBus) {
         let new_keys = self.pressed.clone();
 
         let compare_keys = &new_keys - &self.old_keys;
