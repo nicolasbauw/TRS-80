@@ -38,7 +38,15 @@ impl Display {
         let screen_width = cell_width * COLS;
         let screen_height = cell_height * ROWS;
 
-        let renderer = Renderer::new(window, screen_width, screen_height, cell_height as f32)?;
+        // pixels_per_scanline is how many *buffer* rows make up one real CRT
+        // scanline (the CPC's renderer passes 2: its buffer doubles vertical
+        // resolution, so every pair of rows is one scanline). We don't
+        // double anything - each rendered pixel row already is one scanline
+        // - so this is 1.0, not cell_height (a whole character cell's
+        // height, tens of pixels): passing that made the shader treat an
+        // entire text row as a single "scanline" period, producing the
+        // garbled banding seen when the CRT shader was enabled.
+        let renderer = Renderer::new(window, screen_width, screen_height, 1.0)?;
 
         Ok(Display {
             renderer,
