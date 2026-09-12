@@ -6,18 +6,15 @@ use crate::machine::MachineError;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config {
+    #[serde(default)]
     pub display: ScreenConfig,
     pub memory: MemConfig,
     pub storage: StorageConfig,
     pub debug: Debug,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct ScreenConfig {
-    pub width: u32,
-    pub height: u32,
-    pub font: String,
-    pub font_size: u16,
     /// Zoom level applied at startup (F1-F4 during a session) - "half",
     /// "normal", "x2" or "fullscreen". Absent or unrecognized falls back to
     /// "normal", the same way bytebox's own `default_zoom` does.

@@ -1,4 +1,4 @@
-use sdl2::pixels::{Color, PixelFormatEnum};
+use crate::charset::{CELL_H, CELL_W, CHARSET};
 use sdl2::video::Window;
 use std::error::Error;
 use zilog_silicon::renderer::Renderer;
@@ -7,10 +7,10 @@ const COLS: usize = 64;
 const ROWS: usize = 16;
 
 /// Display zoom level (F1-F4, or `default_zoom` in config.toml). F1 is
-/// "Half" rather than the native resolution itself: with the default
-/// 48pt font, the native size alone already fills or overflows a 1080p
-/// screen, so the useful range shifts down a notch from what a factor of
-/// 1/2/3 would suggest - F1=half native, F2=native, F3=2x native, F4=
+/// "Half" rather than the native resolution itself: the native size
+/// (1152x864, see charset.rs) already fills or overflows a 1080p screen,
+/// so the useful range shifts down a notch from what a factor of 1/2/3
+/// would suggest - F1=half native, F2=native, F3=2x native, F4=
 /// fullscreen. X3 (3x) was dropped: it overflowed even a 4K screen.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum DisplayMode {
@@ -46,51 +46,37 @@ pub struct Display {
     renderer: Renderer,
     screen_width: usize,
     screen_height: usize,
-    cell_height: usize,
     // RGB24 buffer matching the native (screen_width x screen_height)
     // resolution zilog_silicon's wgpu pipeline expects - built fresh from
     // VRAM every frame in draw(), then handed to Renderer::present.
     frame: Vec<u8>,
     crt_panel_visible: bool,
-    // Previous frame's raw VRAM, to skip re-rendering (SDL_ttf/FreeType
-    // shaping plus the manual alpha composite) rows whose text hasn't
-    // changed - re-running that for all 16 rows unconditionally every
-    // frame measured at ~23ms regardless of whether anything moved, which
-    // pegged a CPU core (bytebox's own video::render has no equivalent
-    // cost: it's a pixel-buffer lookup, not FreeType text shaping). `None`
-    // forces a full redraw on the first frame.
+    // Previous frame's raw VRAM, to skip re-rendering rows whose text
+    // hasn't changed. `None` forces a full redraw on the first frame.
     last_vram: Option<Vec<u8>>,
     current_zoom: DisplayMode,
 }
 
 impl Display {
-    pub fn new(window: Window, font: &sdl2::ttf::Font) -> Result<Display, Box<dyn Error>> {
-        // The AMTreasure font is fixed-width (one glyph per TRS-80
-        // character-generator code point, see hexconversion/the VRAM->UTF-16
-        // mapping in draw() below), so a single glyph's measured size gives
-        // us the whole 64x16 grid's native pixel resolution - the fixed
-        // "screen" size zilog_silicon's renderer letterboxes/scales into
-        // whatever the actual window size is.
-        let (cell_width, cell_height) = font.size_of_char('A')?;
-        let (cell_width, cell_height) = (cell_width as usize, cell_height as usize);
-        let screen_width = cell_width * COLS;
-        let screen_height = cell_height * ROWS;
+    pub fn new(window: Window) -> Result<Display, Box<dyn Error>> {
+        // The TRS-80 Model I's actual hardware resolution: a 384x192 pixel
+        // screen holding 64x16 characters, each a 6x12 cell (see
+        // charset.rs) - the fixed "screen" size zilog_silicon's renderer
+        // letterboxes/scales into whatever the actual window size is.
+        let screen_width = CELL_W * COLS;
+        let screen_height = CELL_H * ROWS;
 
         // pixels_per_scanline is how many *buffer* rows make up one real CRT
         // scanline (the CPC's renderer passes 2: its buffer doubles vertical
         // resolution, so every pair of rows is one scanline). We don't
         // double anything - each rendered pixel row already is one scanline
-        // - so this is 1.0, not cell_height (a whole character cell's
-        // height, tens of pixels): passing that made the shader treat an
-        // entire text row as a single "scanline" period, producing the
-        // garbled banding seen when the CRT shader was enabled.
+        // - so this is 1.0.
         let renderer = Renderer::new(window, screen_width, screen_height, 1.0)?;
 
         Ok(Display {
             renderer,
             screen_width,
             screen_height,
-            cell_height,
             frame: vec![0u8; screen_width * screen_height * 3],
             crt_panel_visible: false,
             last_vram: None,
@@ -151,12 +137,8 @@ impl Display {
         self.crt_panel_visible = !self.crt_panel_visible;
     }
 
-    pub fn update(
-        &mut self,
-        bus: &crate::bus::TrsBus,
-        font: &sdl2::ttf::Font,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        self.draw(bus, font)?;
+    pub fn update(&mut self, bus: &crate::bus::TrsBus) -> Result<(), Box<dyn std::error::Error>> {
+        self.draw(bus);
 
         if self.crt_panel_visible {
             let mut settings = self.renderer.crt_settings();
@@ -234,12 +216,9 @@ impl Display {
         Ok(())
     }
 
-    fn draw(
-        &mut self,
-        bus: &crate::bus::TrsBus,
-        font: &sdl2::ttf::Font,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    fn draw(&mut self, bus: &crate::bus::TrsBus) {
         let bytes = bus.read_mem_slice(0x3C00, 0x4000);
+        const TEXT_COLOR: (u16, u16, u16) = (219, 220, 250);
 
         for row in 0..ROWS {
             let row_bytes = &bytes[row * COLS..(row + 1) * COLS];
@@ -251,62 +230,22 @@ impl Display {
                 continue;
             }
 
-            // Converting VRAM data to UTF-16: the font maps the TRS-80
-            // character set 1:1 onto a private-use-area block starting at
-            // 0xE0.
-            let mut utf_line: Vec<u16> = Vec::with_capacity(COLS);
-            for c in row_bytes {
-                utf_line.push((0xE0 << 8) | u16::from(*c));
-            }
-            let line = String::from_utf16_lossy(&utf_line);
-
-            let surf = font
-                .render(&line)
-                .blended(Color::RGBA(219, 220, 250, 255))
-                .map_err(|e| e.to_string())?;
-            // `.blended()` fills the WHOLE surface with the text color and
-            // varies only per-pixel alpha (0 = background, 255 = solid
-            // stroke) - it's coverage, not an image. Converting straight to
-            // RGB24 drops that alpha and leaves every pixel the same flat
-            // text color, background included (a blank lavender screen).
-            // RGBA32 keeps alpha in a byte order that's guaranteed regardless
-            // of platform endianness, so it can be composited by hand onto
-            // the black background below.
-            let surf = surf
-                .convert_format(PixelFormatEnum::RGBA32)
-                .map_err(|e| e.to_string())?;
-
-            let pitch = surf.pitch() as usize;
-            let copy_w = (surf.width() as usize).min(self.screen_width);
-            let copy_h = (surf.height() as usize).min(self.cell_height);
-            let y0 = row * self.cell_height;
-            let screen_width = self.screen_width;
-            let cell_height = self.cell_height;
-            let frame = &mut self.frame;
-
-            // Clears this row's rectangle first: the composite loop below
-            // only covers copy_w/copy_h, which can fall short of the full
-            // cell (font metrics variance) and would otherwise leave stale
-            // pixels from whatever used to be drawn there.
-            for y in 0..cell_height {
-                let dst_start = (y0 + y) * screen_width * 3;
-                frame[dst_start..dst_start + screen_width * 3].fill(0);
-            }
-            surf.with_lock(|pixels| {
-                for y in 0..copy_h {
-                    let src = &pixels[y * pitch..y * pitch + copy_w * 4];
-                    let dst_start = (y0 + y) * screen_width * 3;
-                    let dst = &mut frame[dst_start..dst_start + copy_w * 3];
-                    for (d, s) in dst.chunks_exact_mut(3).zip(src.chunks_exact(4)) {
-                        let a = s[3] as u16;
-                        d[0] = ((s[0] as u16 * a) / 255) as u8;
-                        d[1] = ((s[1] as u16 * a) / 255) as u8;
-                        d[2] = ((s[2] as u16 * a) / 255) as u8;
+            let y0 = row * CELL_H;
+            for (col, &code) in row_bytes.iter().enumerate() {
+                let x0 = col * CELL_W;
+                let glyph = &CHARSET[code as usize];
+                for gy in 0..CELL_H {
+                    let dst_row_start = (y0 + gy) * self.screen_width * 3;
+                    for gx in 0..CELL_W {
+                        let a = glyph[gy * CELL_W + gx] as u16;
+                        let dst = (dst_row_start + (x0 + gx) * 3)..;
+                        self.frame[dst.start] = ((TEXT_COLOR.0 * a) / 255) as u8;
+                        self.frame[dst.start + 1] = ((TEXT_COLOR.1 * a) / 255) as u8;
+                        self.frame[dst.start + 2] = ((TEXT_COLOR.2 * a) / 255) as u8;
                     }
                 }
-            });
+            }
         }
         self.last_vram = Some(bytes);
-        Ok(())
     }
 }

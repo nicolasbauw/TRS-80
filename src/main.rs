@@ -6,6 +6,7 @@ use std::{
 };
 mod bus;
 mod cassette;
+mod charset;
 mod config;
 mod console_window;
 mod display;
@@ -15,7 +16,7 @@ mod machine;
 mod monitor;
 use console_window::ConsoleWindow;
 use display::DisplayMode;
-use machine::{Machine, MachineError};
+use machine::Machine;
 use zilog_silicon::console_log::ConsoleLog;
 use zilog_silicon::status_panel::StatusPanel;
 
@@ -70,10 +71,12 @@ fn launch() -> Result<(), Box<dyn Error>> {
     let config = config::load_config_file()?;
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
-    let ttf_context = sdl2::ttf::init()?;
 
+    // Initial size is a placeholder: `set_zoom` (below, from
+    // config.display.default_zoom) resizes to a real value before the
+    // window is ever shown to the user.
     let mut window = video_subsystem
-        .window("TRuSt-80", config.display.width, config.display.height)
+        .window("TRuSt-80", 768, 384)
         .position_centered()
         .resizable()
         // No-op outside macOS; there, required for wgpu to create a
@@ -85,12 +88,8 @@ fn launch() -> Result<(), Box<dyn Error>> {
         eprintln!("Can't set window icon: {e}");
     }
 
-    let Ok(font) = ttf_context.load_font(config.display.font, config.display.font_size) else {
-        return Err(Box::new(MachineError::FontError));
-    };
-
     // Creating the TRS-80
-    let mut trs80 = Machine::new(window, &font)?;
+    let mut trs80 = Machine::new(window)?;
     let cmd_sender = trs80.command_sender();
     let mut console_log = ConsoleLog::new();
 
@@ -339,7 +338,7 @@ fn launch() -> Result<(), Box<dyn Error>> {
         trs80.keyboard.update(&mut trs80.bus);
 
         // Update display
-        trs80.display.update(&trs80.bus, &font)?;
+        trs80.display.update(&trs80.bus)?;
 
         // Handle console commands: processed before rendering the console
         // window so a command's output shows up the same frame it ran, not

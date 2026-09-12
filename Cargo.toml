@@ -25,8 +25,14 @@ fs_extra = "1.2.0"
 
 [dependencies.sdl2]
 version = "0.38.0"
-features = ["ttf"]
 
 [build-dependencies]
 directories = "4.0"
 fs_extra = "1.2.0"
+
+# Only examples/gen_charset.rs (a one-time asset-generation tool, not part
+# of the shipped app) needs SDL_ttf/FreeType - keeping that dependency out
+# of the main binary was the whole point of switching to charset.rs.
+[dev-dependencies.sdl2]
+version = "0.38.0"
+features = ["ttf"]
