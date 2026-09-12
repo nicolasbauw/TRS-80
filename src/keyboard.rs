@@ -1,20 +1,112 @@
 use sdl2::{event::Event, keyboard::Keycode};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use zilog_z80::bus::{Bus, FlatBus};
 
+/// TRS-80 Model I keyboard matrix: 8 memory-mapped rows, one address bit
+/// per row (0x3801, 0x3802, 0x3804, 0x3808, 0x3810, 0x3820, 0x3840,
+/// 0x3880), 8 columns (bits) each. Row 0x3880's only meaningful bit on
+/// Model I is SHIFT.
+const ROW_ADDRESSES: [u16; 8] = [
+    0x3801, 0x3802, 0x3804, 0x3808, 0x3810, 0x3820, 0x3840, 0x3880,
+];
+const SHIFT_ADDR: u16 = 0x3880;
+const SHIFT_BIT: u8 = 0x01;
+
+/// Maps a host `Keycode` - which SDL already resolves to the character it
+/// produces, independent of physical layout or which host modifier combo
+/// produced it - to the TRS-80 matrix position that types the *same
+/// character*. `shift` is whether the *emulated* TRS-80 shift key must be
+/// asserted to get that character; it's a property of the TRS-80's own
+/// keyboard legend and has nothing to do with whether the host needed
+/// shift (e.g. a US host produces '(' via Shift+9, but on the TRS-80's own
+/// keyboard, '(' lives on Shift+8 - this table only cares about the '('
+/// end result, so typing it on either keyboard just works).
+fn key_target(k: Keycode) -> Option<(u16, u8, bool)> {
+    use Keycode as K;
+    Some(match k {
+        K::At | K::KpAt => (0x3801, 0x01, false),
+        K::A => (0x3801, 0x02, false),
+        K::B => (0x3801, 0x04, false),
+        K::C => (0x3801, 0x08, false),
+        K::D => (0x3801, 0x10, false),
+        K::E => (0x3801, 0x20, false),
+        K::F => (0x3801, 0x40, false),
+        K::G => (0x3801, 0x80, false),
+        K::H => (0x3802, 0x01, false),
+        K::I => (0x3802, 0x02, false),
+        K::J => (0x3802, 0x04, false),
+        K::K => (0x3802, 0x08, false),
+        K::L => (0x3802, 0x10, false),
+        K::M => (0x3802, 0x20, false),
+        K::N => (0x3802, 0x40, false),
+        K::O => (0x3802, 0x80, false),
+        K::P => (0x3804, 0x01, false),
+        K::Q => (0x3804, 0x02, false),
+        K::R => (0x3804, 0x04, false),
+        K::S => (0x3804, 0x08, false),
+        K::T => (0x3804, 0x10, false),
+        K::U => (0x3804, 0x20, false),
+        K::V => (0x3804, 0x40, false),
+        K::W => (0x3804, 0x80, false),
+        K::X => (0x3808, 0x01, false),
+        K::Y => (0x3808, 0x02, false),
+        K::Z => (0x3808, 0x04, false),
+
+        K::Num0 | K::Kp0 => (0x3810, 0x01, false),
+        K::Num1 | K::Kp1 => (0x3810, 0x02, false),
+        K::Exclaim => (0x3810, 0x02, true),
+        K::Num2 | K::Kp2 => (0x3810, 0x04, false),
+        K::Quotedbl => (0x3810, 0x04, true),
+        K::Num3 | K::Kp3 => (0x3810, 0x08, false),
+        K::Hash => (0x3810, 0x08, true),
+        K::Num4 | K::Kp4 => (0x3810, 0x10, false),
+        K::Dollar => (0x3810, 0x10, true),
+        K::Num5 | K::Kp5 => (0x3810, 0x20, false),
+        K::Percent | K::KpPercent => (0x3810, 0x20, true),
+        K::Num6 | K::Kp6 => (0x3810, 0x40, false),
+        K::Ampersand | K::KpAmpersand => (0x3810, 0x40, true),
+        K::Num7 | K::Kp7 => (0x3810, 0x80, false),
+        K::Quote => (0x3810, 0x80, true),
+
+        K::Num8 | K::Kp8 => (0x3820, 0x01, false),
+        K::LeftParen | K::KpLeftParen => (0x3820, 0x01, true),
+        K::Num9 | K::Kp9 => (0x3820, 0x02, false),
+        K::RightParen | K::KpRightParen => (0x3820, 0x02, true),
+        K::Colon | K::KpColon => (0x3820, 0x04, false),
+        K::Asterisk | K::KpMultiply => (0x3820, 0x04, true),
+        K::Semicolon => (0x3820, 0x08, false),
+        K::Plus | K::KpPlus => (0x3820, 0x08, true),
+        K::Comma | K::KpComma => (0x3820, 0x10, false),
+        K::Less | K::KpLess => (0x3820, 0x10, true),
+        K::Minus | K::KpMinus => (0x3820, 0x20, false),
+        K::Equals | K::KpEquals => (0x3820, 0x20, true),
+        K::Period | K::KpPeriod => (0x3820, 0x40, false),
+        K::Greater | K::KpGreater => (0x3820, 0x40, true),
+        K::Slash | K::KpDivide => (0x3820, 0x80, false),
+        K::Question => (0x3820, 0x80, true),
+
+        K::Return | K::KpEnter => (0x3840, 0x01, false),
+        K::Home => (0x3840, 0x02, false),
+        K::End => (0x3840, 0x04, false),
+        K::Up => (0x3840, 0x08, false),
+        K::Down => (0x3840, 0x10, false),
+        K::Left | K::Backspace => (0x3840, 0x20, false),
+        K::Right => (0x3840, 0x40, false),
+        K::Space => (0x3840, 0x80, false),
+
+        K::LShift | K::RShift => (SHIFT_ADDR, SHIFT_BIT, false),
+
+        _ => return None,
+    })
+}
+
 pub struct Keyboard {
-    last: u16,
-    shift: bool,
-    old_keys: HashSet<Keycode>,
     pressed: HashSet<Keycode>,
 }
 
 impl Keyboard {
     pub fn new() -> Keyboard {
         Keyboard {
-            last: 0,
-            shift: false,
-            old_keys: HashSet::new(),
             pressed: HashSet::new(),
         }
     }
@@ -42,128 +134,36 @@ impl Keyboard {
     }
 
     pub fn update(&mut self, bus: &mut FlatBus) {
-        self.clear_ram(bus);
-        self.set_ram(bus);
-    }
-
-    fn clear_ram(&mut self, bus: &mut FlatBus) {
-        bus.write_byte(self.last, 0);
-        bus.write_byte(0x387f, 0);
-        if self.shift {
-            bus.write_byte(0x3880, 0);
-        }
-    }
-
-    fn set_ram(&mut self, bus: &mut FlatBus) {
-        let new_keys = self.pressed.clone();
-
-        let compare_keys = &new_keys - &self.old_keys;
-        let keys = match compare_keys.is_empty() {
-            true => new_keys.clone(),
-            false => self.old_keys.clone(),
-        };
-        self.old_keys = new_keys;
-
-        // Neutral value for variable initialization
-        let mut msg: (u16, u8) = (0x3880, 128);
-        let mut shift = false;
-        if keys.contains(&Keycode::RShift)
-            | keys.contains(&Keycode::LShift)
-            | keys.contains(&Keycode::LeftParen)
-            | keys.contains(&Keycode::RightParen)
-        {
-            bus.write_byte(0x3880, 0x01);
-            shift = true
-        }
-        for k in keys.iter() {
-            msg = match k {
-                &Keycode::At => (0x3801, 0x01),
-                &Keycode::A => (0x3801, 0x02),
-                &Keycode::B => (0x3801, 0x04),
-                &Keycode::C => (0x3801, 0x08),
-                &Keycode::D => (0x3801, 0x10),
-                &Keycode::E => (0x3801, 0x20),
-                &Keycode::F => (0x3801, 0x40),
-                &Keycode::G => (0x3801, 0x80),
-                &Keycode::H => (0x3802, 0x01),
-                &Keycode::I => (0x3802, 0x02),
-                &Keycode::J => (0x3802, 0x04),
-                &Keycode::K => (0x3802, 0x08),
-                &Keycode::L => (0x3802, 0x10),
-                &Keycode::M => (0x3802, 0x20),
-                &Keycode::N => (0x3802, 0x40),
-                &Keycode::O => (0x3802, 0x80),
-                &Keycode::P => (0x3804, 0x01),
-                &Keycode::Q => (0x3804, 0x02),
-                &Keycode::R => (0x3804, 0x04),
-                &Keycode::S => (0x3804, 0x08),
-                &Keycode::T => (0x3804, 0x10),
-                &Keycode::U => (0x3804, 0x20),
-                &Keycode::V => (0x3804, 0x40),
-                &Keycode::W => (0x3804, 0x80),
-                &Keycode::X => (0x3808, 0x01),
-                &Keycode::Y => (0x3808, 0x02),
-                &Keycode::Z => (0x3808, 0x04),
-                &Keycode::Num0 | &Keycode::Kp0 => (0x3810, 0x01),
-                &Keycode::Num1 | &Keycode::Kp1 => (0x3810, 0x02),
-                &Keycode::Num2 | &Keycode::Kp2 => (0x3810, 0x04),
-                &Keycode::Num3 | &Keycode::Kp3 => (0x3810, 0x08),
-                &Keycode::Num4 | &Keycode::Kp4 => (0x3810, 0x10),
-                &Keycode::Num5 | &Keycode::Kp5 => (0x3810, 0x20),
-                &Keycode::Num6 | &Keycode::Kp6 => (0x3810, 0x40),
-                &Keycode::Num7 | &Keycode::Kp7 => (0x3810, 0x80),
-                &Keycode::Num8 | &Keycode::Kp8 | &Keycode::LeftParen => (0x3820, 0x01),
-                &Keycode::Num9 | &Keycode::Kp9 | &Keycode::RightParen => (0x3820, 0x02),
-                &Keycode::KpMultiply => (0x3820, 0x04),
-                &Keycode::Colon => (0x3820, 0x04),
-                &Keycode::KpPlus => (0x3820, 0x08),
-                &Keycode::Semicolon => (0x3820, 0x08),
-                &Keycode::Less => (0x3820, 0x10),
-                &Keycode::Comma => (0x3820, 0x10),
-                &Keycode::Equals => (0x3820, 0x20),
-                &Keycode::KpMinus => (0x3820, 0x20),
-                &Keycode::KpPeriod => (0x3820, 0x40),
-                &Keycode::KpDivide => (0x3820, 0x80),
-                &Keycode::Return | &Keycode::KpEnter => (0x3840, 0x01),
-                &Keycode::Home => (0x3840, 0x02),
-                &Keycode::End => (0x3840, 0x04),
-                &Keycode::Up => (0x3840, 0x08),
-                &Keycode::Down => (0x3840, 0x10),
-                &Keycode::Left | &Keycode::Backspace => (0x3840, 0x20),
-                &Keycode::Right => (0x3840, 0x40),
-                &Keycode::Space => (0x3840, 0x80),
-                _ => continue,
-            };
-            if keys.contains(&Keycode::LCtrl)
-                && keys.contains(&Keycode::RAlt)
-                && keys.contains(&Keycode::Num0)
-            {
-                msg = (0x3801, 0x01)
-            };
-            if keys.contains(&Keycode::Less) & shift {
-                msg = (0x3820, 0x40)
-            };
-            if keys.contains(&Keycode::Comma) & shift {
-                msg = (0x3820, 0x80)
-            };
-            if keys.contains(&Keycode::KpPlus)
-                | keys.contains(&Keycode::Equals)
-                | keys.contains(&Keycode::Less)
-                | keys.contains(&Keycode::KpMultiply)
-                | keys.contains(&Keycode::KpDecimal)
-            {
-                bus.write_byte(0x3880, 0x01);
-                shift = true
+        let mut rows: HashMap<u16, u8> = HashMap::new();
+        for &k in &self.pressed {
+            if let Some((addr, bit, needs_shift)) = key_target(k) {
+                *rows.entry(addr).or_insert(0) |= bit;
+                if needs_shift {
+                    *rows.entry(SHIFT_ADDR).or_insert(0) |= SHIFT_BIT;
+                }
             }
-            bus.write_byte(msg.0, msg.1);
-            //println!("KBD : wrote {} at address {:04X}", msg.1, msg.0);
+        }
+        // Kept from the previous mapping: Ctrl+AltGr+0 forces '@'. Purpose
+        // undocumented (possibly expected by some software as a shortcut);
+        // preserved for compatibility rather than dropped outright.
+        if self.pressed.contains(&Keycode::LCtrl)
+            && self.pressed.contains(&Keycode::RAlt)
+            && self.pressed.contains(&Keycode::Num0)
+        {
+            *rows.entry(0x3801).or_insert(0) |= 0x01;
         }
 
-        // Some routines check this address to check all the columns
-        bus.write_byte(0x387f, 1);
+        // Writing every row each frame (instead of tracking a single
+        // "last written address" to clear) is what makes multiple keys
+        // held across different matrix rows behave correctly - e.g.
+        // holding a letter and a digit at once used to leave one of the
+        // two rows stuck on, since only one address was remembered for
+        // clearing on the next frame.
+        for &addr in &ROW_ADDRESSES {
+            bus.write_byte(addr, rows.get(&addr).copied().unwrap_or(0));
+        }
 
-        // Returning the address to clear and the status of the shift key
-        self.last = msg.0;
-        self.shift = shift
+        // Some ROM routines poll this address to check all the columns
+        bus.write_byte(0x387f, 1);
     }
 }
