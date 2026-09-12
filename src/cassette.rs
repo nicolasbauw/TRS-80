@@ -57,4 +57,16 @@ impl CassetteReader {
     fn is_end(&mut self) -> bool {
         self.tape_position >= self.serialized_tape.len()
     }
+
+    pub fn status(&self) -> String {
+        if self.serialized_tape.is_empty() {
+            "Tape: no tape inserted".to_string()
+        } else {
+            format!(
+                "Tape: position {}/{} bits",
+                self.tape_position,
+                self.serialized_tape.len()
+            )
+        }
+    }
 }

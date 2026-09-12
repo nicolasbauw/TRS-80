@@ -1,9 +1,16 @@
 use crate::hexconversion::HexStringToUnsigned;
+use crate::monitor::{MonitorCmd, MonitorMessage};
 use directories::UserDirs;
 use sdl2::video::Window;
 use std::{
-    collections::HashSet, error, error::Error, fmt, path::PathBuf, sync::mpsc,
-    sync::mpsc::SendError, thread,
+    collections::HashSet,
+    error,
+    error::Error,
+    fmt::{self, Write as _},
+    path::PathBuf,
+    sync::mpsc,
+    sync::mpsc::SendError,
+    thread,
     time::{Duration, Instant},
 };
 use zilog_z80::bus::{Bus, FlatBus};
@@ -38,7 +45,7 @@ Commands:
     powercycle      reboots the TRS-80 and clears RAM
     tape rewind     \"rewinds\" the tape
     tape [file]     \"inserts\" a .cas tape file
-    
+
 Monitor commands:
     d 0x0000        disassembles code at 0x0000 and the 20 next
                     instructions
@@ -48,9 +55,11 @@ Monitor commands:
     b               displays set breakpoints
     b 0x0002        sets a breakpoint at address 0x0002
     f 0x0002        \"frees\" (deletes) breakpoint at address 0x0002
-    g               resumes execution after a breakpoint has been used to
-                    halt execution
-    r               displays the contents of flags and registers";
+    p               pauses execution immediately
+    g               resumes execution (after a breakpoint or \"p\")
+    n               executes a single instruction (usually while paused)
+    r               displays the contents of flags and registers
+    hw              displays hardware peripheral status (tape)";
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum MachineError {
@@ -89,8 +98,8 @@ impl From<toml::de::Error> for MachineError {
     }
 }
 
-impl From<SendError<(String, String, String)>> for MachineError {
-    fn from(_e: SendError<(String, String, String)>) -> MachineError {
+impl From<SendError<MonitorMessage>> for MachineError {
+    fn from(_e: SendError<MonitorMessage>) -> MachineError {
         MachineError::SendMsgError
     }
 }
@@ -110,10 +119,7 @@ pub struct Machine {
     pub keyboard: crate::keyboard::Keyboard,
     pub tape: crate::cassette::CassetteReader,
     config: crate::config::Config,
-    cmd_channel: (
-        mpsc::Sender<(String, String, String)>,
-        mpsc::Receiver<(String, String, String)>,
-    ),
+    cmd_channel: (mpsc::Sender<MonitorMessage>, mpsc::Receiver<MonitorMessage>),
     breakpoints: HashSet<u16>,
     running: bool,
     rom_size: usize,
@@ -154,8 +160,15 @@ impl Machine {
         };
         m.rom_size = s;
         m.bus.set_romspace(0, (m.rom_size) as u16);
-        crate::console::launch(m.cmd_channel.0.clone())?;
         Ok(m)
+    }
+
+    /// Clone to hand to the console window (`console_window.rs`), the only
+    /// producer of commands now that there's no stdin thread anymore - it
+    /// replaces the terminal the emulator used to be launched from, the way
+    /// bytebox's own console window replaced its `console.rs` stdin thread.
+    pub fn command_sender(&self) -> mpsc::Sender<MonitorMessage> {
+        self.cmd_channel.0.clone()
     }
 
     pub fn start(&mut self) {
@@ -228,92 +241,155 @@ impl Machine {
         }
     }
 
-    pub fn console(&mut self) -> Result<(), Box<dyn Error>> {
-        let (command, arg, arg2) = self.cmd_channel.1.try_recv()?;
+    /// Registers and flags, as a display-ready block - shared by the "r"
+    /// command and the machine-state panel.
+    pub fn get_registers_string(&self) -> String {
+        format!(
+            "PC :{:#06X}   SP : {:#06X}\n\
+             S : {}  Z : {}  H : {}  P : {}  N : {}  C : {}\n\
+             BC : {:#06X}  DE : {:#06X}  HL : {:#06X}  AF : {:#06X}\n\
+             BC': {:#06X}  DE': {:#06X}  HL': {:#06X}  AF': {:#06X}\n\
+             IXH : {:#04X}  IXL : {:#04X}  IYH : {:#04X}  IYL : {:#04X}\n\
+             (SP) : {:#06X}  IFF1 : {:<5}  IFF2 : {:<5}  IM : {}  Pending INT : {:<5}  Pending NMI : {:<5}",
+            self.cpu.reg.pc,
+            self.cpu.reg.sp,
+            self.cpu.reg.flags.s as i32,
+            self.cpu.reg.flags.z as i32,
+            self.cpu.reg.flags.h as i32,
+            self.cpu.reg.flags.p as i32,
+            self.cpu.reg.flags.n as i32,
+            self.cpu.reg.flags.c as i32,
+            self.cpu.reg.get_bc(),
+            self.cpu.reg.get_de(),
+            self.cpu.reg.get_hl(),
+            self.cpu.reg.get_af(),
+            self.cpu.alt.get_bc(),
+            self.cpu.alt.get_de(),
+            self.cpu.alt.get_hl(),
+            self.cpu.alt.get_af(),
+            self.cpu.reg.ixh,
+            self.cpu.reg.ixl,
+            self.cpu.reg.iyh,
+            self.cpu.reg.iyl,
+            self.bus.read_word(self.cpu.reg.sp),
+            self.cpu.iff1(),
+            self.cpu.iff2(),
+            self.cpu.im(),
+            self.cpu.has_pending_int(),
+            self.cpu.has_pending_nmi()
+        )
+    }
 
-        match command.as_str() {
-            "help" => {
-                println!("Version {VERSION}");
-                println!("{HELP}");
+    /// Processes one pending command from the console window, if any, and
+    /// returns its textual output (empty if there was no command waiting,
+    /// or it produced none) - to be pushed into the shared `ConsoleLog` by
+    /// the caller. Replaces the old `println!`-based version: there's no
+    /// terminal to print to anymore, only the console window's own log.
+    pub fn process_console_commands(&mut self) -> Result<String, Box<dyn Error>> {
+        let (command, arg, arg2) = match self.cmd_channel.1.try_recv() {
+            Ok(msg) => msg,
+            Err(_) => return Ok(String::new()),
+        };
+        let mut out = String::new();
+
+        match command {
+            MonitorCmd::Help => {
+                writeln!(out, "Version {VERSION}")?;
+                write!(out, "{HELP}")?;
             }
-            "reset" => {
+            MonitorCmd::Reset => {
                 self.stop();
                 self.cpu.reg.pc = 0;
                 self.start();
-                println!("Reset done !");
+                write!(out, "Reset done !")?;
             }
-            "powercycle" => {
+            MonitorCmd::PowerCycle => {
                 self.stop();
                 self.bus
                     .clear_mem_slice(self.rom_size, self.config.memory.ram as usize);
                 self.cpu.reg.pc = 0;
                 self.start();
-                println!("Powercycle done !");
+                write!(out, "Powercycle done !")?;
             }
-            "tape" => {
+            MonitorCmd::Tape => {
                 if arg == *"rewind" {
                     self.tape.rewind();
-                    println!("Tape rewound !");
-                    return Ok(());
-                }
-                let mut tape_path: PathBuf = self.config.storage.tape_path.clone();
-                tape_path.push(arg);
-                match self.tape.load(tape_path) {
-                    Ok(()) => {
-                        println!("Tape loaded !")
-                    }
-                    Err(_) => {
-                        println!("File not found !")
+                    write!(out, "Tape rewound !")?;
+                } else {
+                    let mut tape_path: PathBuf = self.config.storage.tape_path.clone();
+                    tape_path.push(arg);
+                    match self.tape.load(tape_path) {
+                        Ok(()) => write!(out, "Tape loaded !")?,
+                        Err(_) => write!(out, "File not found !")?,
                     }
                 }
             }
-            "d" => {
+            MonitorCmd::Disassemble => {
                 let mut a = arg.to_u16()?;
                 for _ in 0..=20 {
                     let d = dasm::dasm(&self.bus, a);
-                    println!("{:04X}    {}", a, d.0);
+                    writeln!(out, "{:04X}    {}", a, d.0)?;
                     a += (d.1) as u16;
                 }
             }
-            "m" => {
+            MonitorCmd::ReadMem => {
                 let a = arg.to_u16()?;
-                println!("{:04X}    {:02X}", a, self.bus.read_byte(a));
-                if !arg2.is_empty() {
-                    self.bus.write_byte(a, arg2.to_u8()?);
-                    println!("{:04X} -> {:02X}", a, self.bus.read_byte(a));
-                }
+                write!(out, "{:04X}    {:02X}", a, self.bus.read_byte(a))?;
             }
-            "j" => {
+            MonitorCmd::WriteMem => {
+                let a = arg.to_u16()?;
+                self.bus.write_byte(a, arg2.to_u8()?);
+                write!(out, "{:04X} -> {:02X}", a, self.bus.read_byte(a))?;
+            }
+            MonitorCmd::Jump => {
                 let a = arg.to_u16()?;
                 self.cpu.reg.pc = a;
+                write!(out, "Jumped to {:#06X}", a)?;
             }
-            "b" => {
-                let Ok(a) = arg.to_u16() else {
-                    if self.breakpoints.is_empty() {
-                        println!("No breakpoints !")
-                    }
+            MonitorCmd::ListBreakpoints => {
+                if self.breakpoints.is_empty() {
+                    write!(out, "No breakpoints !")?;
+                } else {
                     for b in &self.breakpoints {
-                        println!("{:#06X}", b);
+                        writeln!(out, "{:#06X}", b)?;
                     }
-                    return Ok(());
-                };
-                self.breakpoints.insert(a);
-                println!("New breakpoint at {:#06X}", a);
-            }
-            "f" => {
-                let a = arg.to_u16()?;
-                if self.breakpoints.remove(&a) {
-                    println!("Breakpoint at {:#06X} removed", a);
                 }
             }
-            "g" => {
+            MonitorCmd::AddBreakpoint => {
+                let a = arg.to_u16()?;
+                self.breakpoints.insert(a);
+                write!(out, "New breakpoint at {:#06X}", a)?;
+            }
+            MonitorCmd::RemoveBreakpoint => {
+                let a = arg.to_u16()?;
+                if self.breakpoints.remove(&a) {
+                    write!(out, "Breakpoint at {:#06X} removed", a)?;
+                }
+            }
+            MonitorCmd::Pause => {
+                self.stop();
+                write!(out, "Paused.")?;
+            }
+            MonitorCmd::Resume => {
                 self.start();
+                write!(out, "Resumed.")?;
             }
-            "r" => {
-                print!("PC :{:#06X}\tSP : {:#06X}\nS : {}\tZ : {}\tH : {}\tP : {}\tN : {}\tC : {}\nB : {:#04X}\tC : {:#04X}\nD : {:#04X}\tE : {:#04X}\nH : {:#04X}\tL : {:#04X}\nA : {:#04X}\t(SP) : {:#06X}\n", self.cpu.reg.pc, self.cpu.reg.sp, self.cpu.reg.flags.s as i32, self.cpu.reg.flags.z as i32, self.cpu.reg.flags.h as i32, self.cpu.reg.flags.p as i32, self.cpu.reg.flags.n as i32, self.cpu.reg.flags.c as i32, self.cpu.reg.b, self.cpu.reg.c, self.cpu.reg.d, self.cpu.reg.e, self.cpu.reg.h, self.cpu.reg.l, self.cpu.reg.a, self.bus.read_word(self.cpu.reg.sp))
+            MonitorCmd::Step => {
+                self.cpu.execute(&mut self.bus);
+                let a = self.cpu.reg.pc;
+                let d = dasm::dasm(&self.bus, a);
+                write!(out, "{:04X}    {}", a, d.0)?;
             }
-            _ => {}
+            MonitorCmd::Registers => {
+                write!(out, "{}", self.get_registers_string())?;
+            }
+            MonitorCmd::Hardware => {
+                write!(out, "{}", self.tape.status())?;
+            }
+            MonitorCmd::Unknown => {
+                write!(out, "Unknown command.")?;
+            }
         }
-        Ok(())
+        Ok(out)
     }
 }

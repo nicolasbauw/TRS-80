@@ -14,6 +14,7 @@ pub struct Display {
     // resolution zilog_silicon's wgpu pipeline expects - built fresh from
     // VRAM every frame in draw(), then handed to Renderer::present.
     frame: Vec<u8>,
+    crt_panel_visible: bool,
 }
 
 impl Display {
@@ -36,11 +37,24 @@ impl Display {
             screen_width,
             cell_height,
             frame: vec![0u8; screen_width * screen_height * 3],
+            crt_panel_visible: false,
         })
     }
 
     pub fn resize(&mut self) {
         self.renderer.resize();
+    }
+
+    pub fn handle_event(&mut self, event: &sdl2::event::Event) {
+        self.renderer.handle_event(event);
+    }
+
+    pub fn toggle_crt(&mut self) {
+        self.renderer.toggle_crt();
+    }
+
+    pub fn toggle_crt_panel(&mut self) {
+        self.crt_panel_visible = !self.crt_panel_visible;
     }
 
     pub fn update(
@@ -49,7 +63,39 @@ impl Display {
         font: &sdl2::ttf::Font,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.draw(bus, font)?;
-        self.renderer.present(&self.frame, None);
+
+        if self.crt_panel_visible {
+            let mut settings = self.renderer.crt_settings();
+            let mut open = true;
+            {
+                let mut overlay = |ctx: &egui::Context| {
+                    egui::Window::new("CRT shader").open(&mut open).show(ctx, |ui| {
+                        ui.add(egui::Slider::new(&mut settings.mask_cell_px, 1.0..=6.0).text("Mask cell (px)"));
+                        ui.add(egui::Slider::new(&mut settings.mask_min, 0.0..=1.0).text("Mask min"));
+                        ui.add(egui::Slider::new(&mut settings.mask_strength, 0.0..=1.0).text("Mask strength"));
+                        ui.add(egui::Slider::new(&mut settings.scanline_beam, 1.0..=20.0).text("Scanline beam"));
+                        ui.add(
+                            egui::Slider::new(&mut settings.scanline_strength, 0.0..=1.0)
+                                .text("Scanline strength"),
+                        );
+                        ui.add(egui::Slider::new(&mut settings.beam_bloom, 0.0..=2.0).text("Beam bloom"));
+                        ui.add(egui::Slider::new(&mut settings.bright_boost, 0.5..=3.0).text("Bright boost"));
+                        ui.add(
+                            egui::Slider::new(&mut settings.horizontal_blur, 0.0..=1.0)
+                                .text("Horizontal blur"),
+                        );
+                        if ui.button("Reset to defaults").clicked() {
+                            settings = zilog_silicon::renderer::CrtSettings::default();
+                        }
+                    });
+                };
+                self.renderer.present(&self.frame, Some(&mut overlay));
+            }
+            self.renderer.set_crt_settings(settings);
+            self.crt_panel_visible = open;
+        } else {
+            self.renderer.present(&self.frame, None);
+        }
         Ok(())
     }
 

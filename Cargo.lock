@@ -1881,6 +1881,7 @@ name = "trust-80"
 version = "1.0.0"
 dependencies = [
  "directories 4.0.1",
+ "egui",
  "fs_extra",
  "sdl2",
  "serde",

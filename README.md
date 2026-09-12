@@ -11,7 +11,7 @@ You will need a ROM, and the [AnotherMansTreasureMIB64C2X3Y.ttf](https://www.kre
 ![Screenshot](assets/TRuSt-80-2.png)
 
 You can customize the RAM, ROM and resolution, among other things, in the ~/.config/trust80/config.toml file.
-The F12 key quits the emulator.
+Close the window to quit the emulator. F11 opens the console (replaces the old terminal-based console). F12 opens the machine status panel (registers, hardware). F5 toggles the CRT shader, F6 opens its settings panel.
 
 
 In the console, the `reset` command resets the TRS-80.  
@@ -29,5 +29,8 @@ There is also an integrated machine language monitor:
 `b` displays set breakpoints  
 `b 0x0002` sets a breakpoint at address 0x0002  
 `f 0x0002` "frees" (deletes) breakpoint at address 0x0002  
-`g` resumes execution after a breakpoint has been used to halt execution  
-`r` displays the contents of flags and registers
+`p` pauses execution immediately  
+`g` resumes execution (after a breakpoint or `p`)  
+`n` executes a single instruction (usually while paused)  
+`r` displays the contents of flags and registers  
+`hw` displays hardware peripheral status (tape)
