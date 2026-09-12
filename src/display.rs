@@ -1,14 +1,13 @@
-use crate::charset::{CELL_H, CELL_W, CHARSET};
 use sdl2::video::Window;
 use std::error::Error;
+use trust_80_core::bus::TrsBus;
+use trust_80_core::video::{self, ROWS, SCREEN_HEIGHT, SCREEN_WIDTH};
 use zilog_silicon::renderer::Renderer;
-
-const COLS: usize = 64;
-const ROWS: usize = 16;
 
 /// Display zoom level (F1-F4, or `default_zoom` in config.toml). F1 is
 /// "Half" rather than the native resolution itself: the native size
-/// (1152x864, see charset.rs) already fills or overflows a 1080p screen,
+/// (1152x864, see core's charset.rs) already fills or overflows a 1080p
+/// screen,
 /// so the useful range shifts down a notch from what a factor of 1/2/3
 /// would suggest - F1=half native, F2=native, F3=2x native, F4=
 /// fullscreen. X3 (3x) was dropped: it overflowed even a 4K screen.
@@ -44,9 +43,7 @@ impl DisplayMode {
 
 pub struct Display {
     renderer: Renderer,
-    screen_width: usize,
-    screen_height: usize,
-    // RGB24 buffer matching the native (screen_width x screen_height)
+    // RGB24 buffer matching the native (SCREEN_WIDTH x SCREEN_HEIGHT)
     // resolution zilog_silicon's wgpu pipeline expects - built fresh from
     // VRAM every frame in draw(), then handed to Renderer::present.
     frame: Vec<u8>,
@@ -59,25 +56,41 @@ pub struct Display {
 
 impl Display {
     pub fn new(window: Window) -> Result<Display, Box<dyn Error>> {
-        // The TRS-80 Model I's actual hardware resolution: a 384x192 pixel
-        // screen holding 64x16 characters, each a 6x12 cell (see
-        // charset.rs) - the fixed "screen" size zilog_silicon's renderer
-        // letterboxes/scales into whatever the actual window size is.
-        let screen_width = CELL_W * COLS;
-        let screen_height = CELL_H * ROWS;
+        // The native "screen" size (see trust_80_core::video) that
+        // zilog_silicon's renderer letterboxes/scales into whatever the
+        // actual window size is.
+        //
+        // pixels_per_scanline is how many *buffer* rows make up one real
+        // CRT scanline. The real TRS-80 Model I screen was 384x192 pixels
+        // (192 real scanlines) - our buffer renders at SCREEN_HEIGHT (864)
+        // for legible antialiased text, an 864/192 = 4.5x vertical
+        // oversampling versus real hardware, the same idea as the CPC
+        // renderer's own 2x (its buffer doubles vertical resolution, so
+        // pixels_per_scanline=2 there). Passing 1.0 here - claiming every
+        // buffer row is already a real scanline - made them razor-thin
+        // relative to the actual output size and the shader's scanline
+        // effect nearly invisible regardless of scanline_beam/strength
+        // (see renderer_crt.wgsl's own comment on line_height for exactly
+        // this failure mode).
+        let mut renderer = Renderer::new(window, SCREEN_WIDTH, SCREEN_HEIGHT, 4.5)?;
 
-        // pixels_per_scanline is how many *buffer* rows make up one real CRT
-        // scanline (the CPC's renderer passes 2: its buffer doubles vertical
-        // resolution, so every pair of rows is one scanline). We don't
-        // double anything - each rendered pixel row already is one scanline
-        // - so this is 1.0.
-        let renderer = Renderer::new(window, screen_width, screen_height, 1.0)?;
+        // bytebox's own CrtSettings::default() (unchanged - not overridden
+        // here, just started from a different point) was tuned by eye
+        // against its buffer's 2x vertical oversampling; ours is 4.5x, so
+        // the same scanline_strength/horizontal_blur read as far too
+        // strong, and far too blurry, at this finer pitch. These three are
+        // tuned by eye for our own oversampling factor instead - still
+        // fully adjustable live via the F6 panel.
+        renderer.set_crt_settings(zilog_silicon::renderer::CrtSettings {
+            scanline_strength: 0.28,
+            horizontal_blur: 0.3,
+            bright_boost: 1.05,
+            ..zilog_silicon::renderer::CrtSettings::default()
+        });
 
         Ok(Display {
             renderer,
-            screen_width,
-            screen_height,
-            frame: vec![0u8; screen_width * screen_height * 3],
+            frame: vec![0u8; SCREEN_WIDTH * SCREEN_HEIGHT * 3],
             crt_panel_visible: false,
             last_vram: None,
             current_zoom: DisplayMode::Normal,
@@ -112,8 +125,8 @@ impl Display {
             DisplayMode::Fullscreen => unreachable!("handled above, with an early return"),
         };
         let _ = window.set_size(
-            (self.screen_width as f32 * factor) as u32,
-            (self.screen_height as f32 * factor) as u32,
+            (SCREEN_WIDTH as f32 * factor) as u32,
+            (SCREEN_HEIGHT as f32 * factor) as u32,
         );
         window.set_position(
             sdl2::video::WindowPos::Centered,
@@ -137,7 +150,7 @@ impl Display {
         self.crt_panel_visible = !self.crt_panel_visible;
     }
 
-    pub fn update(&mut self, bus: &crate::bus::TrsBus) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn update(&mut self, bus: &TrsBus) -> Result<(), Box<dyn std::error::Error>> {
         self.draw(bus);
 
         if self.crt_panel_visible {
@@ -216,35 +229,19 @@ impl Display {
         Ok(())
     }
 
-    fn draw(&mut self, bus: &crate::bus::TrsBus) {
+    fn draw(&mut self, bus: &TrsBus) {
         let bytes = bus.read_mem_slice(0x3C00, 0x4000);
-        const TEXT_COLOR: (u16, u16, u16) = (219, 220, 250);
 
         for row in 0..ROWS {
-            let row_bytes = &bytes[row * COLS..(row + 1) * COLS];
+            let row_bytes = &bytes[row * video::COLS..(row + 1) * video::COLS];
             let unchanged = self
                 .last_vram
                 .as_deref()
-                .is_some_and(|prev| &prev[row * COLS..(row + 1) * COLS] == row_bytes);
+                .is_some_and(|prev| &prev[row * video::COLS..(row + 1) * video::COLS] == row_bytes);
             if unchanged {
                 continue;
             }
-
-            let y0 = row * CELL_H;
-            for (col, &code) in row_bytes.iter().enumerate() {
-                let x0 = col * CELL_W;
-                let glyph = &CHARSET[code as usize];
-                for gy in 0..CELL_H {
-                    let dst_row_start = (y0 + gy) * self.screen_width * 3;
-                    for gx in 0..CELL_W {
-                        let a = glyph[gy * CELL_W + gx] as u16;
-                        let dst = (dst_row_start + (x0 + gx) * 3)..;
-                        self.frame[dst.start] = ((TEXT_COLOR.0 * a) / 255) as u8;
-                        self.frame[dst.start + 1] = ((TEXT_COLOR.1 * a) / 255) as u8;
-                        self.frame[dst.start + 2] = ((TEXT_COLOR.2 * a) / 255) as u8;
-                    }
-                }
-            }
+            video::render_row(bus, row, &mut self.frame);
         }
         self.last_vram = Some(bytes);
     }

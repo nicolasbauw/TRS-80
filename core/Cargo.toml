@@ -1,0 +1,25 @@
+[package]
+name = "trust-80-core"
+version = "0.1.0"
+edition = "2021"
+authors = ["Nicolas BAUW <nbauw@hotmail.com>"]
+description = "TRS-80 (model 1) emulation core: CPU/bus wiring, keyboard matrix, cassette, monitor commands - no windowing, no rendering backend"
+license = "MIT"
+
+# "native" covers everything that assumes a real filesystem: cassette
+# loading from a path (cassette.rs). On by default (the desktop frontend
+# needs no changes), but a frontend that has no use for it - a wasm build
+# in particular - can turn it off.
+[features]
+default = ["native"]
+native = []
+
+[dependencies]
+zilog_z80 = "1.1.2"
+
+# Only examples/gen_charset.rs (a one-time offline asset-generation tool,
+# not part of the library) needs SDL_ttf/FreeType to rasterize charset.rs
+# from the source font - kept out of the library's own dependency tree.
+[dev-dependencies.sdl2]
+version = "0.38.0"
+features = ["ttf"]

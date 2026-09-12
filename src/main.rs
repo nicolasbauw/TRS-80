@@ -4,20 +4,14 @@ use std::{
     process::ExitCode,
     time::{Duration, Instant},
 };
-mod bus;
-mod cassette;
-mod charset;
 mod config;
 mod console_window;
 mod display;
-mod hexconversion;
 mod keyboard;
-mod keys;
-mod machine;
-mod monitor;
 use console_window::ConsoleWindow;
-use display::DisplayMode;
-use machine::Machine;
+use display::{Display, DisplayMode};
+use keyboard::Keyboard;
+use trust_80_core::machine::Machine;
 use zilog_silicon::console_log::ConsoleLog;
 use zilog_silicon::status_panel::StatusPanel;
 
@@ -89,10 +83,20 @@ fn launch() -> Result<(), Box<dyn Error>> {
         eprintln!("Can't set window icon: {e}");
     }
 
-    // Creating the TRS-80
-    let mut trs80 = Machine::new(window)?;
+    // Creating the TRS-80: reading the ROM file into memory is the only
+    // filesystem access happening here - the core itself (Machine::new)
+    // never touches a filesystem at all, it just takes bytes.
+    let rom = std::fs::read(&config.memory.rom)?;
+    let mut trs80 = Machine::new(
+        &rom,
+        config.memory.ram,
+        config.storage.tape_path.clone(),
+        config.debug.iodevices.unwrap_or(false),
+    );
     let cmd_sender = trs80.command_sender();
     let mut console_log = ConsoleLog::new();
+    let mut display = Display::new(window)?;
+    let mut keyboard = Keyboard::new();
 
     // Console window (F11): replaces the old stdin-driven terminal console
     // entirely, on the same model as bytebox's own console window.
@@ -127,9 +131,7 @@ fn launch() -> Result<(), Box<dyn Error>> {
     let mut status_panel = StatusPanel::new(status_win, "trust-80 status panel device")?;
     let mut status_visible = false;
 
-    trs80
-        .display
-        .set_zoom(DisplayMode::from_config(config.display.default_zoom.as_deref()));
+    display.set_zoom(DisplayMode::from_config(config.display.default_zoom.as_deref()));
 
     let mut events = sdl_context.event_pump()?;
 
@@ -163,13 +165,13 @@ fn launch() -> Result<(), Box<dyn Error>> {
             // on the machine, and a focus change on a different window
             // shouldn't clear keys held on this one.
             if event_window_id(&event).is_none_or(|id| id == main_window_id) {
-                trs80.keyboard.handle_event(&event);
+                keyboard.handle_event(&event);
             }
             // egui_sdl2_event's key translation table doesn't know KpEnter,
             // so it never validates a text field (console window) when hit
             // from the numeric keypad - rewritten to Return for egui's sake
-            // only. Must NOT reach trs80.keyboard above: on the real
-            // matrix KpEnter and Return are different keys.
+            // only. Must NOT reach `keyboard` above: on the real matrix
+            // KpEnter and Return are different keys.
             let egui_event = match &event {
                 Event::KeyDown {
                     timestamp,
@@ -205,7 +207,7 @@ fn launch() -> Result<(), Box<dyn Error>> {
             };
             // Each panel's own EguiSDL2State filters events by window_id
             // itself, so every event can be fed to every panel unconditionally.
-            trs80.display.handle_event(&egui_event);
+            display.handle_event(&egui_event);
             console_window.handle_event(&egui_event);
             status_panel.handle_event(&egui_event);
 
@@ -233,7 +235,7 @@ fn launch() -> Result<(), Box<dyn Error>> {
                     ..
                 } => {
                     if window_id == main_window_id {
-                        trs80.display.resize();
+                        display.resize();
                     } else if window_id == console_window_id {
                         console_window.resize();
                     } else if window_id == status_window_id {
@@ -255,19 +257,19 @@ fn launch() -> Result<(), Box<dyn Error>> {
                     repeat: false,
                     window_id,
                     ..
-                } if window_id == main_window_id => trs80.display.set_zoom(DisplayMode::Half),
+                } if window_id == main_window_id => display.set_zoom(DisplayMode::Half),
                 Event::KeyDown {
                     keycode: Some(Keycode::F2),
                     repeat: false,
                     window_id,
                     ..
-                } if window_id == main_window_id => trs80.display.set_zoom(DisplayMode::Normal),
+                } if window_id == main_window_id => display.set_zoom(DisplayMode::Normal),
                 Event::KeyDown {
                     keycode: Some(Keycode::F3),
                     repeat: false,
                     window_id,
                     ..
-                } if window_id == main_window_id => trs80.display.set_zoom(DisplayMode::X2),
+                } if window_id == main_window_id => display.set_zoom(DisplayMode::X2),
                 Event::KeyDown {
                     keycode: Some(Keycode::F4),
                     repeat: false,
@@ -275,25 +277,25 @@ fn launch() -> Result<(), Box<dyn Error>> {
                     ..
                 } if window_id == main_window_id => {
                     // Toggle: F4 exits fullscreen if it's already active.
-                    let mode = if trs80.display.current_zoom() == DisplayMode::Fullscreen {
+                    let mode = if display.current_zoom() == DisplayMode::Fullscreen {
                         DisplayMode::Normal
                     } else {
                         DisplayMode::Fullscreen
                     };
-                    trs80.display.set_zoom(mode);
+                    display.set_zoom(mode);
                 }
                 Event::KeyDown {
                     keycode: Some(Keycode::F5),
                     repeat: false,
                     window_id,
                     ..
-                } if window_id == main_window_id => trs80.display.toggle_crt(),
+                } if window_id == main_window_id => display.toggle_crt(),
                 Event::KeyDown {
                     keycode: Some(Keycode::F6),
                     repeat: false,
                     window_id,
                     ..
-                } if window_id == main_window_id => trs80.display.toggle_crt_panel(),
+                } if window_id == main_window_id => display.toggle_crt_panel(),
                 // Also accepted from console_window_id itself, not just the
                 // main window: opening it gives it focus (request_focus
                 // below), so a re-press of F11 to close it arrives with
@@ -336,10 +338,10 @@ fn launch() -> Result<(), Box<dyn Error>> {
         }
 
         // Handle SDL keyboard events (keyboard MMIO peripheral)
-        trs80.keyboard.update(&mut trs80.bus);
+        keyboard.update(&mut trs80.bus);
 
         // Update display
-        trs80.display.update(&trs80.bus)?;
+        display.update(&trs80.bus)?;
 
         // Handle console commands: processed before rendering the console
         // window so a command's output shows up the same frame it ran, not

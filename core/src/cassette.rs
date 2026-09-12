@@ -1,5 +1,5 @@
+#[cfg(feature = "native")]
 use std::{fs::File, io, io::prelude::*, path::PathBuf};
-//use crate::config;
 
 pub struct CassetteReader {
     inserted_tape: Vec<u8>,
@@ -27,12 +27,22 @@ impl CassetteReader {
         bits
     }
 
-    pub fn load(&mut self, filename: PathBuf) -> io::Result<()> {
-        let mut f = File::open(filename)?;
+    /// Loads tape content already in memory - the only way to load one on
+    /// a target with no filesystem (e.g. a wasm/browser build, where a
+    /// dropped/picked file arrives as bytes, never a path).
+    pub fn load_from_bytes(&mut self, bytes: &[u8]) {
         self.inserted_tape.clear();
-        f.read_to_end(&mut self.inserted_tape)?;
+        self.inserted_tape.extend_from_slice(bytes);
         self.serialized_tape = self.serialize();
         self.tape_position = 0;
+    }
+
+    #[cfg(feature = "native")]
+    pub fn load(&mut self, filename: PathBuf) -> io::Result<()> {
+        let mut f = File::open(filename)?;
+        let mut bytes = Vec::new();
+        f.read_to_end(&mut bytes)?;
+        self.load_from_bytes(&bytes);
         Ok(())
     }
 

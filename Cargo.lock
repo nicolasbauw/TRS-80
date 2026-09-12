@@ -1321,7 +1321,15 @@ dependencies = [
  "serde",
  "serde_derive",
  "toml 0.7.8",
+ "trust-80-core",
  "zilog_silicon",
+]
+
+[[package]]
+name = "trust-80-core"
+version = "0.1.0"
+dependencies = [
+ "sdl2",
  "zilog_z80",
 ]
 

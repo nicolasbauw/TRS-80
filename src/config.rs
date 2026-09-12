@@ -1,8 +1,31 @@
 use directories::UserDirs;
 use serde_derive::{Deserialize, Serialize};
-use std::{fs, path::PathBuf};
+use std::{fmt, fs, path::PathBuf};
 
-use crate::machine::MachineError;
+#[derive(Debug)]
+pub enum ConfigError {
+    ConfigFile,
+    ConfigFileFmt,
+    IOError,
+}
+
+impl fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            ConfigError::ConfigFile => "Can't load config file",
+            ConfigError::ConfigFileFmt => "Bad config file format",
+            ConfigError::IOError => "I/O error",
+        })
+    }
+}
+
+impl std::error::Error for ConfigError {}
+
+impl From<std::io::Error> for ConfigError {
+    fn from(_e: std::io::Error) -> ConfigError {
+        ConfigError::IOError
+    }
+}
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config {
@@ -38,16 +61,16 @@ pub struct Debug {
     pub iodevices: Option<bool>,
 }
 
-fn config_path() -> Result<PathBuf, MachineError> {
-    let user_dirs = UserDirs::new().ok_or(MachineError::ConfigFile)?;
+fn config_path() -> Result<PathBuf, ConfigError> {
+    let user_dirs = UserDirs::new().ok_or(ConfigError::ConfigFile)?;
     let mut cfg = user_dirs.home_dir().to_path_buf();
     cfg.push(".config/trust80/config.toml");
     Ok(cfg)
 }
 
-pub fn load_config_file() -> Result<Config, MachineError> {
+pub fn load_config_file() -> Result<Config, ConfigError> {
     let buf = fs::read_to_string(config_path()?)?;
-    let config: Config = toml::from_str(&buf).map_err(|_e| MachineError::ConfigFileFmt)?;
+    let config: Config = toml::from_str(&buf).map_err(|_e| ConfigError::ConfigFileFmt)?;
     Ok(config)
 }
 
@@ -56,12 +79,12 @@ pub fn load_config_file() -> Result<Config, MachineError> {
 /// `Config` would be shorter, but would rewrite the user's file end to end:
 /// comments lost, sections reordered, defaults suddenly spelled out. Too
 /// high a price for a file people hand-edit.
-pub fn save_display_config(display: &ScreenConfig) -> Result<(), MachineError> {
-    let body = toml::to_string(display).map_err(|_e| MachineError::ConfigFileFmt)?;
+pub fn save_display_config(display: &ScreenConfig) -> Result<(), ConfigError> {
+    let body = toml::to_string(display).map_err(|_e| ConfigError::ConfigFileFmt)?;
     write_config_section("display", &body)
 }
 
-fn write_config_section(section: &str, body: &str) -> Result<(), MachineError> {
+fn write_config_section(section: &str, body: &str) -> Result<(), ConfigError> {
     let path = config_path()?;
     // The config directory may not exist yet (fresh checkout, never run) -
     // without this, saving a setting would fail on a completely fresh

@@ -1,18 +1,13 @@
+use crate::bus::TrsBus;
 use crate::hexconversion::HexStringToUnsigned;
 use crate::monitor::{MonitorCmd, MonitorMessage};
-use directories::UserDirs;
-use sdl2::video::Window;
 use std::{
     collections::HashSet,
-    error,
-    error::Error,
-    fmt::{self, Write as _},
+    fmt::Write as _,
     path::PathBuf,
     sync::mpsc,
-    sync::mpsc::SendError,
     time::{Duration, Instant},
 };
-use crate::bus::TrsBus;
 use zilog_z80::bus::Bus;
 use zilog_z80::cpu::CPU;
 use zilog_z80::dasm;
@@ -38,6 +33,7 @@ const MAX_CATCHUP_TICKS: u32 = 177_000;
 fn emulated_duration(ticks: u32) -> Duration {
     Duration::from_nanos(ticks as u64 * CPU_TICK_NANOS)
 }
+
 const HELP: &str = "
 Commands:
     reset           reboots the TRS-80
@@ -60,109 +56,49 @@ Monitor commands:
     r               displays the contents of flags and registers
     hw              displays hardware peripheral status (tape)";
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum MachineError {
-    ConfigFile,
-    ConfigFileFmt,
-    IOError,
-    SendMsgError,
-    SnapshotError,
-    DisplayError,
-}
-
-impl fmt::Display for MachineError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            MachineError::ConfigFileFmt => "Bad config file format",
-            MachineError::ConfigFile => "Can't load config file",
-            MachineError::IOError => "I/O Error",
-            MachineError::SendMsgError => "Message not sent",
-            MachineError::SnapshotError => "Snapshot I/O error",
-            MachineError::DisplayError => "SDL2 error",
-        })
-    }
-}
-
-impl From<std::io::Error> for MachineError {
-    fn from(_e: std::io::Error) -> MachineError {
-        MachineError::IOError
-    }
-}
-
-impl From<toml::de::Error> for MachineError {
-    fn from(_e: toml::de::Error) -> MachineError {
-        MachineError::ConfigFileFmt
-    }
-}
-
-impl From<SendError<MonitorMessage>> for MachineError {
-    fn from(_e: SendError<MonitorMessage>) -> MachineError {
-        MachineError::SendMsgError
-    }
-}
-
-impl From<MachineError> for std::io::Error {
-    fn from(e: MachineError) -> std::io::Error {
-        std::io::Error::new(std::io::ErrorKind::Other, e)
-    }
-}
-
-impl error::Error for MachineError {}
-
 pub struct Machine {
     pub cpu: CPU,
     pub bus: TrsBus,
-    pub display: crate::display::Display,
-    pub keyboard: crate::keyboard::Keyboard,
-    config: crate::config::Config,
     cmd_channel: (mpsc::Sender<MonitorMessage>, mpsc::Receiver<MonitorMessage>),
     breakpoints: HashSet<u16>,
     running: bool,
     rom_size: usize,
+    ram_size: usize,
+    // Only read from the "tape" monitor command's native (path-based)
+    // branch - see cassette.rs's own native/non-native split for why
+    // loading by path can't be the only way.
+    #[allow(dead_code)]
+    tape_dir: PathBuf,
     last_tick_time: Instant,
 }
 
 impl Machine {
-    pub fn new(window: Window) -> Result<Machine, MachineError> {
-        let Ok(config) = crate::config::load_config_file() else {
-            let user_dirs = UserDirs::new().ok_or(MachineError::ConfigFile)?;
-            let mut cfg = user_dirs.home_dir().to_path_buf();
-            cfg.push(".config/trust80/config.toml");
-            eprintln!(
-                "Can't load config file {}",
-                cfg.to_str().unwrap_or_default()
-            );
-            return Err(MachineError::ConfigFile);
-        };
-        let Ok(display) = crate::display::Display::new(window) else {
-            return Err(MachineError::DisplayError);
-        };
-        let mut m = Self {
+    /// `rom` is the ROM image content itself, not a path: no filesystem
+    /// access happens here at all (see `TrsBus::load_bytes`), so a caller
+    /// on any target - including one with no filesystem - just needs to
+    /// get the bytes from wherever makes sense for it (a file read on
+    /// desktop, `include_bytes!` or a fetched buffer on the web).
+    pub fn new(rom: &[u8], ram_size: u16, tape_dir: PathBuf, debug_io: bool) -> Machine {
+        let mut bus = TrsBus::new(0xFFFF);
+        bus.debug_io = debug_io;
+        let rom_size = bus.load_bytes(rom, 0);
+        bus.set_romspace(0, rom_size as u16);
+        Machine {
             cpu: CPU::new(),
-            bus: TrsBus::new(0xFFFF),
-            display,
-            keyboard: crate::keyboard::Keyboard::new(),
-            config,
+            bus,
             cmd_channel: mpsc::channel(),
             breakpoints: HashSet::new(),
             running: true,
-            rom_size: 0,
+            rom_size,
+            ram_size: ram_size as usize,
+            tape_dir,
             last_tick_time: Instant::now(),
-        };
-        m.bus.debug_io = m.config.debug.iodevices.unwrap_or(false);
-        let Ok(s) = m.bus.load_bin(&m.config.memory.rom, 0) else {
-            eprintln!("Can't load ROM file {}", &m.config.memory.rom);
-            return Err(MachineError::IOError);
-        };
-        m.rom_size = s;
-        m.bus.set_romspace(0, (m.rom_size) as u16);
-        Ok(m)
+        }
     }
 
-    /// Clone to hand to the console window (`console_window.rs`), the only
-    /// producer of commands now that there's no stdin thread anymore - it
-    /// replaces the terminal the emulator used to be launched from, the way
-    /// bytebox's own console window replaced its `console.rs` stdin thread.
+    /// Clone to hand to a console facade (the desktop app's console
+    /// window), the producer of commands this processes in
+    /// `process_console_commands`.
     pub fn command_sender(&self) -> mpsc::Sender<MonitorMessage> {
         self.cmd_channel.0.clone()
     }
@@ -181,10 +117,10 @@ impl Machine {
 
     /// Runs however many T-states correspond to whatever real time has
     /// actually elapsed since the last call, then returns. The pacing comes
-    /// from the caller's own frame cadence (`Display::update`'s wgpu
-    /// present is vsync-locked, see `renderer.rs`'s `PresentMode::Fifo`) -
-    /// this only converts "how long was that" into "how much of the Z80's
-    /// time that represents", it doesn't sleep or otherwise wait itself.
+    /// from the caller's own frame cadence (e.g. the desktop app's wgpu
+    /// present being vsync-locked) - this only converts "how long was
+    /// that" into "how much of the Z80's time that represents", it doesn't
+    /// sleep or otherwise wait itself.
     ///
     /// A fixed tick budget per call doesn't work here: pick one short
     /// enough for responsive keyboard/display polling (a prior version
@@ -235,7 +171,7 @@ impl Machine {
     }
 
     /// Registers and flags, as a display-ready block - shared by the "r"
-    /// command and the machine-state panel.
+    /// command and a frontend's machine-state panel.
     pub fn get_registers_string(&self) -> String {
         format!(
             "PC :{:#06X}   SP : {:#06X}\n\
@@ -273,12 +209,11 @@ impl Machine {
         )
     }
 
-    /// Processes one pending command from the console window, if any, and
+    /// Processes one pending command from a console facade, if any, and
     /// returns its textual output (empty if there was no command waiting,
-    /// or it produced none) - to be pushed into the shared `ConsoleLog` by
-    /// the caller. Replaces the old `println!`-based version: there's no
-    /// terminal to print to anymore, only the console window's own log.
-    pub fn process_console_commands(&mut self) -> Result<String, Box<dyn Error>> {
+    /// or it produced none) - to be pushed into whatever log/console UI
+    /// the frontend has.
+    pub fn process_console_commands(&mut self) -> Result<String, Box<dyn std::error::Error>> {
         let (command, arg, arg2) = match self.cmd_channel.1.try_recv() {
             Ok(msg) => msg,
             Err(_) => return Ok(String::new()),
@@ -298,8 +233,7 @@ impl Machine {
             }
             MonitorCmd::PowerCycle => {
                 self.stop();
-                self.bus
-                    .clear_mem_slice(self.rom_size, self.config.memory.ram as usize);
+                self.bus.clear_mem_slice(self.rom_size, self.ram_size);
                 self.cpu.reg.pc = 0;
                 self.start();
                 write!(out, "Powercycle done !")?;
@@ -309,11 +243,19 @@ impl Machine {
                     self.bus.tape.borrow_mut().rewind();
                     write!(out, "Tape rewound !")?;
                 } else {
-                    let mut tape_path: PathBuf = self.config.storage.tape_path.clone();
-                    tape_path.push(arg);
-                    match self.bus.tape.borrow_mut().load(tape_path) {
-                        Ok(()) => write!(out, "Tape loaded !")?,
-                        Err(_) => write!(out, "File not found !")?,
+                    #[cfg(feature = "native")]
+                    {
+                        let mut tape_path = self.tape_dir.clone();
+                        tape_path.push(arg);
+                        match self.bus.tape.borrow_mut().load(tape_path) {
+                            Ok(()) => write!(out, "Tape loaded !")?,
+                            Err(_) => write!(out, "File not found !")?,
+                        }
+                    }
+                    #[cfg(not(feature = "native"))]
+                    {
+                        let _ = arg;
+                        write!(out, "Loading a tape by name isn't supported on this build.")?;
                     }
                 }
             }

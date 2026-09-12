@@ -1,3 +1,10 @@
+[workspace]
+members = ["core"]
+
+# `cargo build`/`cargo run` without `-p` act on the workspace default
+# members - this root package (the desktop app) plus `core` - but only this
+# one defines a binary, so plain `cargo run` still does the expected thing.
+
 [package]
 name = "trust-80"
 version = "2.0.0"
@@ -13,7 +20,7 @@ readme = "README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-zilog_z80 = "1.1.2"
+trust-80-core = { path = "core" }
 zilog_silicon = { path = "../zilog_silicon", default-features = false }
 egui = "0.33.3"
 image = { version = "0.25", default-features = false, features = ["png"] }
@@ -29,10 +36,3 @@ version = "0.38.0"
 [build-dependencies]
 directories = "4.0"
 fs_extra = "1.2.0"
-
-# Only examples/gen_charset.rs (a one-time asset-generation tool, not part
-# of the shipped app) needs SDL_ttf/FreeType - keeping that dependency out
-# of the main binary was the whole point of switching to charset.rs.
-[dev-dependencies.sdl2]
-version = "0.38.0"
-features = ["ttf"]

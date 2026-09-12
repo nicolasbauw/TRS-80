@@ -1,6 +1,7 @@
 use crate::cassette::CassetteReader;
-use std::cell::RefCell;
+#[cfg(feature = "native")]
 use std::io;
+use std::cell::RefCell;
 use zilog_z80::bus::{Bus, FlatBus};
 
 /// TRS-80 Model I bus: RAM/ROM (a plain `FlatBus`) plus the cassette reader,
@@ -39,8 +40,23 @@ impl TrsBus {
         self.mem.clear_mem_slice(start, end);
     }
 
+    #[cfg(feature = "native")]
     pub fn load_bin(&mut self, file: &str, org: u16) -> io::Result<usize> {
         self.mem.load_bin(file, org)
+    }
+
+    /// Loads ROM/program content already in memory, straight into RAM via
+    /// plain byte writes (bypassing `zilog_z80`'s own path-based
+    /// `FlatBus::load_bin`) - the only way to load one on a target with no
+    /// filesystem (e.g. a wasm/browser build, where a ROM is baked in via
+    /// `include_bytes!` or arrives as bytes from the network/a file picker).
+    /// Must be called before `set_romspace` protects the address range
+    /// against writes, same as `load_bin`.
+    pub fn load_bytes(&mut self, rom: &[u8], org: u16) -> usize {
+        for (i, &b) in rom.iter().enumerate() {
+            self.mem.write_byte(org.wrapping_add(i as u16), b);
+        }
+        rom.len()
     }
 }
 

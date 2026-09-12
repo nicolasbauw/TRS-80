@@ -3,7 +3,7 @@
 //! console entirely - there's no `console.rs` reading `stdin` anymore, the
 //! way bytebox's own console window replaced its equivalent.
 
-use crate::monitor::{MonitorMessage, parse_command};
+use trust_80_core::monitor::{MonitorMessage, parse_command};
 use sdl2::video::Window;
 use std::sync::mpsc::Sender;
 use zilog_silicon::console_log::ConsoleLog;
