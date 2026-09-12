@@ -23,8 +23,6 @@ fn launch() -> Result<(), Box<dyn Error>> {
     let config = config::load_config_file()?;
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
-    let display_mode = video_subsystem.current_display_mode(0)?;
-    let refresh_rate = display_mode.refresh_rate;
     let ttf_context = sdl2::ttf::init()?;
 
     let window = video_subsystem
@@ -38,7 +36,6 @@ fn launch() -> Result<(), Box<dyn Error>> {
 
     // Creating the TRS-80
     let mut trs80 = Machine::new(window)?;
-    trs80.set_timings(refresh_rate);
 
     let mut events = sdl_context.event_pump()?;
 

@@ -3,13 +3,35 @@ use directories::UserDirs;
 use sdl2::video::Window;
 use std::{
     collections::HashSet, error, error::Error, fmt, path::PathBuf, sync::mpsc,
-    sync::mpsc::SendError, thread, time::Duration,
+    sync::mpsc::SendError, thread,
+    time::{Duration, Instant},
 };
 use zilog_z80::bus::{Bus, FlatBus};
 use zilog_z80::cpu::CPU;
 use zilog_z80::dasm;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+// TRS-80 Model I Z80 clock, matching the previous set_freq(1.77) call.
+// 1e9 / 1_770_000 = 564.97ns; 565 is the nearest whole nanosecond - same
+// precision tradeoff bytebox makes for its own (exact, 4MHz) clock, just
+// with a ~0.005% bias here since 1.77MHz doesn't divide 1e9 evenly. Utterly
+// immaterial for a BASIC-level emulator, and a large improvement over
+// zilog_z80's own execute_timed(), which measured elapsed time with
+// SystemTime (wall clock, not monotonic) truncated to whole milliseconds.
+const CPU_TICK_NANOS: u64 = 565;
+
+// How many T-states to run before yielding control back to the SDL loop
+// for events/display/console - independent of the host display's refresh
+// rate on purpose (a prior version derived this from the detected monitor
+// refresh rate, which both tied emulated CPU speed to whatever monitor was
+// plugged in, and got noticeably worse at higher refresh rates due to
+// millisecond truncation: ~4% too fast at 60Hz, ~13% too fast at 144Hz).
+const TICKS_PER_SLICE: u32 = 17_700; // 10ms of emulated time at 1.77MHz
+
+fn emulated_duration(ticks: u32) -> Duration {
+    Duration::from_nanos(ticks as u64 * CPU_TICK_NANOS)
+}
 const HELP: &str = "
 Commands:
     reset           reboots the TRS-80
@@ -95,6 +117,7 @@ pub struct Machine {
     breakpoints: HashSet<u16>,
     running: bool,
     rom_size: usize,
+    next_slice: Instant,
 }
 
 impl Machine {
@@ -123,6 +146,7 @@ impl Machine {
             breakpoints: HashSet::new(),
             running: true,
             rom_size: 0,
+            next_slice: Instant::now(),
         };
         let Ok(s) = m.bus.load_bin(&m.config.memory.rom, 0) else {
             eprintln!("Can't load ROM file {}", &m.config.memory.rom);
@@ -147,6 +171,7 @@ impl Machine {
     }
 
     pub fn cpu_loop(&mut self) {
+        let mut slice_ticks: u32 = 0;
         loop {
             if !self.is_running() {
                 return;
@@ -174,25 +199,33 @@ impl Machine {
                 _ => {}
             }
 
-            // executes slice_max_cycles number of cycles
-            if let Some(t) = self.cpu.execute_timed(&mut self.bus) {
-                thread::sleep(Duration::from_millis(t.into()));
-                break;
-            }
+            slice_ticks += self.cpu.execute(&mut self.bus);
 
-            if self.breakpoints.is_empty() {
-                continue;
-            }
             if self.breakpoints.contains(&self.cpu.reg.pc) {
                 self.stop()
             }
-        }
-    }
 
-    pub fn set_timings(&mut self, refresh_rate: i32) {
-        let s: f32 = (1.0 / (refresh_rate as f32)) * 1000.0;
-        self.cpu.set_slice_duration(s as u32); // Adjusting slice_duration to detected refresh rate
-        self.cpu.set_freq(1.77); // Adjusting slice_max_cycles to detected refresh rate
+            if slice_ticks >= TICKS_PER_SLICE {
+                break;
+            }
+        }
+
+        // Targets an absolute deadline rather than sleeping a fixed
+        // duration: with a fixed sleep, the real period is "computation
+        // time + sleep", so the emulation runs durably too slow. Advancing
+        // next_slice by the emulated duration instead keeps each slice's
+        // real-world budget exact regardless of how long this one took to
+        // compute, so occasional slow slices don't accumulate into drift.
+        let now = Instant::now();
+        if now < self.next_slice {
+            thread::sleep(self.next_slice - now);
+            self.next_slice += emulated_duration(slice_ticks);
+        } else {
+            // Running behind (e.g. resuming after a breakpoint pause, or a
+            // slow host): resync from now instead of trying to catch up,
+            // which would otherwise burst the CPU faster than real time.
+            self.next_slice = now + emulated_duration(slice_ticks);
+        }
     }
 
     pub fn console(&mut self) -> Result<(), Box<dyn Error>> {
