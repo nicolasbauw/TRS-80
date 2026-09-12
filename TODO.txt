@@ -1,0 +1,14 @@
+Bonjour ! Ce projet est un émulateur de Tandy TRS-80.
+L'idée est de mutualiser le plus possible le front avec bytebox (Dev/amstrad_cpc), dans le but prochain d'avoir un front commun aux deux émulateurs.
+Pour l'instant j'ai refait un checkout pour revenir à l'époque ou l'émulateur utilisait SDL2 et non SDL3, mais il ne compile plus depuis un moment (il a du y avoir une mise à jour de la crate SDL2 à un moment qui a rendu quelque chose non fonctionnel.)
+
+Il faut donc créer un plan en plusieurs étapes:
+1) pouvoir compiler
+2) passer à la dernière version de la crate zilog_z80
+3) auditer la gestion du clavier , que j'aimerais améliorer
+4) auditer la gestion des timings, j'ai la crainte qu'elle ne soit pas assez précise (tenons compte que je compte implémenter dans le futur la gestion du lecteur de disquettes)
+5) regarder le fonctionnement du front de bytebox
+6) évaluer la faisabilité de faire du front de bytebox le front de trust-80 (l'émulateur de TRS-80)
+7) copier le font de bytebox (Dev/amstrad_cpc/bytebox) dans ~/Dev/zilog_silicon (le projet de front unifié, appelé zilog silicon)
+8) faire les modifications nécessaires à cet émulateur TRS-80 pour pouvoir utiliser zilog silicon, et, si nécessaire, apporter des modifications à zilog silicon, tout en gardant ce dernier compatible avec le back de bytebox et de bytebox-web (surtout garder à l'esprit qu'à terme zilog silicon sera le front unique des deux émulateurs), ou noter les modifications qui impacteront bytebox et bytebox-web dans un document, pour modifier ces projets dans un second temps. On ne touchera donc surtout pas aux projets amstrad_cpc (bytebox) et bytebox-web pour l'instant.
+9) s'inspirer de bytebox-web pour pouvoir, à partir de ce projet qui deviendra donc le core de l'émulateur de TRS-80 (trust-80), créer la version web/wasm
