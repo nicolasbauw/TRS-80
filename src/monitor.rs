@@ -17,7 +17,7 @@ pub fn parse_command(line: &str) -> MonitorMessage {
     let command = match cmd_part {
         "h" | "help" => MonitorCmd::Help,
         "reset" => MonitorCmd::Reset,
-        "powercycle" => MonitorCmd::PowerCycle,
+        "powercycle" | "pc" => MonitorCmd::PowerCycle,
         "tape" => MonitorCmd::Tape,
         "d" => MonitorCmd::Disassemble,
         "j" => MonitorCmd::Jump,

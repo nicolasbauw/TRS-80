@@ -14,7 +14,7 @@ readme = "README.md"
 
 [dependencies]
 zilog_z80 = "1.1.2"
-zilog_silicon = { path = "../zilog_silicon" }
+zilog_silicon = { path = "../zilog_silicon", default-features = false }
 egui = "0.33.3"
 toml = "0.7.0"
 serde = "1.0.145"

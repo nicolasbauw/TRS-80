@@ -15,7 +15,7 @@ Close the window to quit the emulator. F11 opens the console (replaces the old t
 
 
 In the console, the `reset` command resets the TRS-80.  
-The `powercycle` command resets the TRS-80 and clears the RAM.  
+The `powercycle` command (or `pc`) resets the TRS-80 and clears the RAM.  
 The `tape rewind` command is used to "rewind" the tape.  
 The `tape` command followed by a filename is used to "insert" a tape.  
 Type `help` to display available commands.  
