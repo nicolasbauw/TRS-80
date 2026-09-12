@@ -16,6 +16,7 @@ readme = "README.md"
 zilog_z80 = "1.1.2"
 zilog_silicon = { path = "../zilog_silicon", default-features = false }
 egui = "0.33.3"
+image = { version = "0.25", default-features = false, features = ["png"] }
 toml = "0.7.0"
 serde = "1.0.145"
 serde_derive = "1.0.145"

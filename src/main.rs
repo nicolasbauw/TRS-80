@@ -39,6 +39,31 @@ fn event_window_id(event: &Event) -> Option<u32> {
     }
 }
 
+/// Sets `assets/trust-80-logo-2.png` (a variant drawn specifically to stay
+/// legible at title-bar/taskbar sizes, unlike the main logo) as the given
+/// window's icon. Decoded via the `image` crate (not sdl2's own `"image"`
+/// feature, which links the system `libSDL2_image` library) so there's no
+/// extra dependency to install - same rationale and pattern as bytebox's
+/// own icon loader.
+fn set_window_icon(window: &mut sdl2::video::Window) -> Result<(), String> {
+    let img = image::load_from_memory(include_bytes!("../assets/trust-80-logo-2.png"))
+        .map_err(|e| e.to_string())?
+        .into_rgba8();
+    let (width, height) = img.dimensions();
+    let mut pixels = img.into_raw();
+    let pitch = width * 4;
+    let surface = sdl2::surface::Surface::from_data(
+        &mut pixels,
+        width,
+        height,
+        pitch,
+        sdl2::pixels::PixelFormatEnum::RGBA32,
+    )
+    .map_err(|e| e.to_string())?;
+    window.set_icon(&surface);
+    Ok(())
+}
+
 fn launch() -> Result<(), Box<dyn Error>> {
     // Setting up SDL
     let config = config::load_config_file()?;
@@ -46,7 +71,7 @@ fn launch() -> Result<(), Box<dyn Error>> {
     let video_subsystem = sdl_context.video()?;
     let ttf_context = sdl2::ttf::init()?;
 
-    let window = video_subsystem
+    let mut window = video_subsystem
         .window("TRuSt-80", config.display.width, config.display.height)
         .position_centered()
         .resizable()
@@ -55,6 +80,9 @@ fn launch() -> Result<(), Box<dyn Error>> {
         .metal_view()
         .build()?;
     let main_window_id = window.id();
+    if let Err(e) = set_window_icon(&mut window) {
+        eprintln!("Can't set window icon: {e}");
+    }
 
     let Ok(font) = ttf_context.load_font(config.display.font, config.display.font_size) else {
         return Err(Box::new(MachineError::FontError));
