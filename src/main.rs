@@ -1,5 +1,10 @@
 use sdl2::{event::Event, keyboard::Keycode};
-use std::{error::Error, process::ExitCode};
+use std::{
+    error::Error,
+    process::ExitCode,
+    time::{Duration, Instant},
+};
+mod bus;
 mod cassette;
 mod config;
 mod console_window;
@@ -88,6 +93,23 @@ fn launch() -> Result<(), Box<dyn Error>> {
     let mut status_visible = false;
 
     let mut events = sdl_context.event_pump()?;
+
+    // Explicit frame-rate governor, independent of vsync: `Renderer`
+    // requests `PresentMode::Fifo`, which should already block each
+    // `present()` until the next vsync, but that's not guaranteed to
+    // actually throttle on every platform/driver/compositor combination -
+    // without a hard backstop here, a vsync that doesn't block leaves this
+    // loop free to spin as fast as the CPU allows, pegging a core for no
+    // benefit (Machine::cpu_loop's tick budget is computed from actual
+    // elapsed time regardless, so it stays correct no matter what paces
+    // this loop - this is purely about not burning power). Same pattern
+    // bytebox's own main loop uses on top of its own vsync-locked present.
+    // 50Hz, same target bytebox paces its own (PAL CPC) frame loop to -
+    // cuts the per-frame SDL_ttf/wgpu rendering work (the likely source of
+    // high CPU use, not Z80 execution itself) by 5x compared to the 100Hz
+    // this was first tried at, without perceptibly hurting responsiveness.
+    const FRAME_INTERVAL: Duration = Duration::from_millis(20);
+    let mut next_frame = Instant::now();
 
     // SDL loop
     'running: loop {
@@ -234,7 +256,17 @@ fn launch() -> Result<(), Box<dyn Error>> {
         }
         if status_visible {
             let registers = trs80.get_registers_string();
-            status_panel.render(&registers, &trs80.tape.status());
+            status_panel.render(&registers, &trs80.bus.tape.borrow().status());
+        }
+
+        let now = Instant::now();
+        if now < next_frame {
+            std::thread::sleep(next_frame - now);
+            next_frame += FRAME_INTERVAL;
+        } else {
+            // Running behind: resync from now rather than trying to catch
+            // up, which would just mean spinning flat out for a while.
+            next_frame = now;
         }
     }
     Ok(())

@@ -10,10 +10,10 @@ use std::{
     path::PathBuf,
     sync::mpsc,
     sync::mpsc::SendError,
-    thread,
     time::{Duration, Instant},
 };
-use zilog_z80::bus::{Bus, FlatBus};
+use crate::bus::TrsBus;
+use zilog_z80::bus::Bus;
 use zilog_z80::cpu::CPU;
 use zilog_z80::dasm;
 
@@ -28,13 +28,12 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 // SystemTime (wall clock, not monotonic) truncated to whole milliseconds.
 const CPU_TICK_NANOS: u64 = 565;
 
-// How many T-states to run before yielding control back to the SDL loop
-// for events/display/console - independent of the host display's refresh
-// rate on purpose (a prior version derived this from the detected monitor
-// refresh rate, which both tied emulated CPU speed to whatever monitor was
-// plugged in, and got noticeably worse at higher refresh rates due to
-// millisecond truncation: ~4% too fast at 60Hz, ~13% too fast at 144Hz).
-const TICKS_PER_SLICE: u32 = 17_700; // 10ms of emulated time at 1.77MHz
+// Runaway guard on how many ticks a single cpu_loop() call will try to
+// make up for elapsed real time - not a normal operating limit, just a
+// backstop against bursting the CPU past real time after a long pause
+// (breakpoint, minimized window, a slow host). ~100ms of emulated time:
+// several times more than a single vsync-paced frame ever needs to cover.
+const MAX_CATCHUP_TICKS: u32 = 177_000;
 
 fn emulated_duration(ticks: u32) -> Duration {
     Duration::from_nanos(ticks as u64 * CPU_TICK_NANOS)
@@ -114,16 +113,15 @@ impl error::Error for MachineError {}
 
 pub struct Machine {
     pub cpu: CPU,
-    pub bus: FlatBus,
+    pub bus: TrsBus,
     pub display: crate::display::Display,
     pub keyboard: crate::keyboard::Keyboard,
-    pub tape: crate::cassette::CassetteReader,
     config: crate::config::Config,
     cmd_channel: (mpsc::Sender<MonitorMessage>, mpsc::Receiver<MonitorMessage>),
     breakpoints: HashSet<u16>,
     running: bool,
     rom_size: usize,
-    next_slice: Instant,
+    last_tick_time: Instant,
 }
 
 impl Machine {
@@ -143,17 +141,17 @@ impl Machine {
         };
         let mut m = Self {
             cpu: CPU::new(),
-            bus: FlatBus::new(0xFFFF),
+            bus: TrsBus::new(0xFFFF),
             display,
             keyboard: crate::keyboard::Keyboard::new(),
-            tape: crate::cassette::CassetteReader::new(),
             config,
             cmd_channel: mpsc::channel(),
             breakpoints: HashSet::new(),
             running: true,
             rom_size: 0,
-            next_slice: Instant::now(),
+            last_tick_time: Instant::now(),
         };
+        m.bus.debug_io = m.config.debug.iodevices.unwrap_or(false);
         let Ok(s) = m.bus.load_bin(&m.config.memory.rom, 0) else {
             eprintln!("Can't load ROM file {}", &m.config.memory.rom);
             return Err(MachineError::IOError);
@@ -183,61 +181,58 @@ impl Machine {
         self.running
     }
 
+    /// Runs however many T-states correspond to whatever real time has
+    /// actually elapsed since the last call, then returns. The pacing comes
+    /// from the caller's own frame cadence (`Display::update`'s wgpu
+    /// present is vsync-locked, see `renderer.rs`'s `PresentMode::Fifo`) -
+    /// this only converts "how long was that" into "how much of the Z80's
+    /// time that represents", it doesn't sleep or otherwise wait itself.
+    ///
+    /// A fixed tick budget per call doesn't work here: pick one short
+    /// enough for responsive keyboard/display polling (a prior version
+    /// used a fixed 10ms) and it becomes the bottleneck the moment the
+    /// caller's real per-call cadence runs longer than that (any vsync
+    /// slower than 100Hz), throttling the whole emulation to
+    /// budget/actual_cadence of real speed - a TRS-80 that's supposed to
+    /// run at 1.77MHz was measurably crawling at ~60% of that.
     pub fn cpu_loop(&mut self) {
-        let mut slice_ticks: u32 = 0;
-        loop {
-            if !self.is_running() {
-                return;
-            }
-            let pc = self.cpu.reg.pc;
-            let opcode = self.bus.read_byte(pc);
-            match opcode {
-                0xdb => {
-                    let port = self.bus.read_byte(self.cpu.reg.pc + 1);
-                    if let Some(true) = self.config.debug.iodevices {
-                        println!("IN on port {}", port);
-                    }
-                    // cassette reader port ?
-                    if port == 0xFF {
-                        self.cpu.reg.a = self.tape.read();
-                    }
-                }
-                0xd3 => {
-                    let port = self.bus.read_byte(self.cpu.reg.pc + 1);
-                    if let Some(true) = self.config.debug.iodevices {
-                        println!("OUT {} on port {}", self.cpu.reg.a, port);
-                    }
-                    if port == 0xFF {}
-                }
-                _ => {}
-            }
+        if !self.is_running() {
+            // Don't let a pause accumulate a backlog of "missed" ticks that
+            // would otherwise burst forward the moment execution resumes.
+            self.last_tick_time = Instant::now();
+            return;
+        }
 
-            slice_ticks += self.cpu.execute(&mut self.bus);
+        let now = Instant::now();
+        let elapsed = now.saturating_duration_since(self.last_tick_time);
+        let capped = elapsed > emulated_duration(MAX_CATCHUP_TICKS);
+        let budget_nanos = if capped {
+            emulated_duration(MAX_CATCHUP_TICKS).as_nanos()
+        } else {
+            elapsed.as_nanos()
+        };
+        let budget_ticks = (budget_nanos / CPU_TICK_NANOS as u128) as u32;
+
+        let mut ran_ticks: u32 = 0;
+        while ran_ticks < budget_ticks {
+            if !self.is_running() {
+                break;
+            }
+            ran_ticks += self.cpu.execute(&mut self.bus);
 
             if self.breakpoints.contains(&self.cpu.reg.pc) {
                 self.stop()
             }
-
-            if slice_ticks >= TICKS_PER_SLICE {
-                break;
-            }
         }
 
-        // Targets an absolute deadline rather than sleeping a fixed
-        // duration: with a fixed sleep, the real period is "computation
-        // time + sleep", so the emulation runs durably too slow. Advancing
-        // next_slice by the emulated duration instead keeps each slice's
-        // real-world budget exact regardless of how long this one took to
-        // compute, so occasional slow slices don't accumulate into drift.
-        let now = Instant::now();
-        if now < self.next_slice {
-            thread::sleep(self.next_slice - now);
-            self.next_slice += emulated_duration(slice_ticks);
+        if capped {
+            // Far behind schedule (a long pause, a slow host): don't try to
+            // fully catch up, which would burst the CPU well past real
+            // time - resync from now instead, same policy as bytebox's own
+            // "late frame" handling.
+            self.last_tick_time = now;
         } else {
-            // Running behind (e.g. resuming after a breakpoint pause, or a
-            // slow host): resync from now instead of trying to catch up,
-            // which would otherwise burst the CPU faster than real time.
-            self.next_slice = now + emulated_duration(slice_ticks);
+            self.last_tick_time += emulated_duration(ran_ticks);
         }
     }
 
@@ -313,12 +308,12 @@ impl Machine {
             }
             MonitorCmd::Tape => {
                 if arg == *"rewind" {
-                    self.tape.rewind();
+                    self.bus.tape.borrow_mut().rewind();
                     write!(out, "Tape rewound !")?;
                 } else {
                     let mut tape_path: PathBuf = self.config.storage.tape_path.clone();
                     tape_path.push(arg);
-                    match self.tape.load(tape_path) {
+                    match self.bus.tape.borrow_mut().load(tape_path) {
                         Ok(()) => write!(out, "Tape loaded !")?,
                         Err(_) => write!(out, "File not found !")?,
                     }
@@ -384,7 +379,7 @@ impl Machine {
                 write!(out, "{}", self.get_registers_string())?;
             }
             MonitorCmd::Hardware => {
-                write!(out, "{}", self.tape.status())?;
+                write!(out, "{}", self.bus.tape.borrow().status())?;
             }
             MonitorCmd::Unknown => {
                 write!(out, "Unknown command.")?;

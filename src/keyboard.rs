@@ -1,7 +1,8 @@
+use crate::bus::TrsBus;
 use sdl2::{event::Event, keyboard::Keycode};
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
-use zilog_z80::bus::{Bus, FlatBus};
+use zilog_z80::bus::Bus;
 
 // Real TRS-80 keyboard hardware had no auto-repeat: the ROM's keyboard
 // scan is edge-triggered, so a key held down just reads as pressed once,
@@ -170,7 +171,7 @@ impl Keyboard {
         }
     }
 
-    pub fn update(&mut self, bus: &mut FlatBus) {
+    pub fn update(&mut self, bus: &mut TrsBus) {
         let mut rows: HashMap<u16, u8> = HashMap::new();
         for &k in &self.pressed {
             // Backspace is handled separately below, with auto-repeat.

@@ -15,6 +15,14 @@ pub struct Display {
     // VRAM every frame in draw(), then handed to Renderer::present.
     frame: Vec<u8>,
     crt_panel_visible: bool,
+    // Previous frame's raw VRAM, to skip re-rendering (SDL_ttf/FreeType
+    // shaping plus the manual alpha composite) rows whose text hasn't
+    // changed - re-running that for all 16 rows unconditionally every
+    // frame measured at ~23ms regardless of whether anything moved, which
+    // pegged a CPU core (bytebox's own video::render has no equivalent
+    // cost: it's a pixel-buffer lookup, not FreeType text shaping). `None`
+    // forces a full redraw on the first frame.
+    last_vram: Option<Vec<u8>>,
 }
 
 impl Display {
@@ -38,6 +46,7 @@ impl Display {
             cell_height,
             frame: vec![0u8; screen_width * screen_height * 3],
             crt_panel_visible: false,
+            last_vram: None,
         })
     }
 
@@ -59,7 +68,7 @@ impl Display {
 
     pub fn update(
         &mut self,
-        bus: &zilog_z80::bus::FlatBus,
+        bus: &crate::bus::TrsBus,
         font: &sdl2::ttf::Font,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.draw(bus, font)?;
@@ -101,22 +110,30 @@ impl Display {
 
     fn draw(
         &mut self,
-        bus: &zilog_z80::bus::FlatBus,
+        bus: &crate::bus::TrsBus,
         font: &sdl2::ttf::Font,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.frame.fill(0);
-
         let bytes = bus.read_mem_slice(0x3C00, 0x4000);
 
-        // Converting VRAM data to UTF-16: the font maps the TRS-80 character
-        // set 1:1 onto a private-use-area block starting at 0xE0.
-        let mut utf_data: Vec<u16> = Vec::with_capacity(bytes.len());
-        for c in bytes.iter() {
-            utf_data.push((0xE0 << 8) | u16::from(*c));
-        }
-
         for row in 0..ROWS {
-            let line = String::from_utf16_lossy(&utf_data[row * COLS..(row + 1) * COLS]);
+            let row_bytes = &bytes[row * COLS..(row + 1) * COLS];
+            let unchanged = self
+                .last_vram
+                .as_deref()
+                .is_some_and(|prev| &prev[row * COLS..(row + 1) * COLS] == row_bytes);
+            if unchanged {
+                continue;
+            }
+
+            // Converting VRAM data to UTF-16: the font maps the TRS-80
+            // character set 1:1 onto a private-use-area block starting at
+            // 0xE0.
+            let mut utf_line: Vec<u16> = Vec::with_capacity(COLS);
+            for c in row_bytes {
+                utf_line.push((0xE0 << 8) | u16::from(*c));
+            }
+            let line = String::from_utf16_lossy(&utf_line);
+
             let surf = font
                 .render(&line)
                 .blended(Color::RGBA(219, 220, 250, 255))
@@ -138,7 +155,17 @@ impl Display {
             let copy_h = (surf.height() as usize).min(self.cell_height);
             let y0 = row * self.cell_height;
             let screen_width = self.screen_width;
+            let cell_height = self.cell_height;
             let frame = &mut self.frame;
+
+            // Clears this row's rectangle first: the composite loop below
+            // only covers copy_w/copy_h, which can fall short of the full
+            // cell (font metrics variance) and would otherwise leave stale
+            // pixels from whatever used to be drawn there.
+            for y in 0..cell_height {
+                let dst_start = (y0 + y) * screen_width * 3;
+                frame[dst_start..dst_start + screen_width * 3].fill(0);
+            }
             surf.with_lock(|pixels| {
                 for y in 0..copy_h {
                     let src = &pixels[y * pitch..y * pitch + copy_w * 4];
@@ -153,6 +180,7 @@ impl Display {
                 }
             });
         }
+        self.last_vram = Some(bytes);
         Ok(())
     }
 }
