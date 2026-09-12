@@ -1,6 +1,20 @@
 use sdl2::{event::Event, keyboard::Keycode};
 use std::collections::{HashMap, HashSet};
+use std::time::{Duration, Instant};
 use zilog_z80::bus::{Bus, FlatBus};
+
+// Real TRS-80 keyboard hardware had no auto-repeat: the ROM's keyboard
+// scan is edge-triggered, so a key held down just reads as pressed once,
+// same as here for every other key. Backspace is the one exception we
+// add back as a deliberate modern convenience - holding it down should
+// delete continuously, like on any keyboard since. REPEAT_DELAY is how
+// long to wait before the first repeat; REPEAT_INTERVAL is the pace of
+// repeats after that. The bit has to be pulsed off partway through each
+// interval (not just re-asserted) so the ROM's edge-triggered scan sees a
+// fresh press each time, rather than one continuous hold it only counts
+// once.
+const BACKSPACE_REPEAT_DELAY: Duration = Duration::from_millis(500);
+const BACKSPACE_REPEAT_INTERVAL: Duration = Duration::from_millis(80);
 
 /// TRS-80 Model I keyboard matrix: 8 memory-mapped rows, one address bit
 /// per row (0x3801, 0x3802, 0x3804, 0x3808, 0x3810, 0x3820, 0x3840,
@@ -102,12 +116,14 @@ fn key_target(k: Keycode) -> Option<(u16, u8, bool)> {
 
 pub struct Keyboard {
     pressed: HashSet<Keycode>,
+    backspace_pressed_at: Option<Instant>,
 }
 
 impl Keyboard {
     pub fn new() -> Keyboard {
         Keyboard {
             pressed: HashSet::new(),
+            backspace_pressed_at: None,
         }
     }
 
@@ -122,11 +138,21 @@ impl Keyboard {
             Event::KeyDown {
                 keycode: Some(k), ..
             } => {
+                // Ignores the host's own OS-level typematic repeat: the
+                // repeat timing below is driven by our own clock instead,
+                // so behavior doesn't depend on the host's repeat-rate
+                // settings.
+                if *k == Keycode::Backspace && self.backspace_pressed_at.is_none() {
+                    self.backspace_pressed_at = Some(Instant::now());
+                }
                 self.pressed.insert(*k);
             }
             Event::KeyUp {
                 keycode: Some(k), ..
             } => {
+                if *k == Keycode::Backspace {
+                    self.backspace_pressed_at = None;
+                }
                 self.pressed.remove(k);
             }
             _ => {}
@@ -136,11 +162,31 @@ impl Keyboard {
     pub fn update(&mut self, bus: &mut FlatBus) {
         let mut rows: HashMap<u16, u8> = HashMap::new();
         for &k in &self.pressed {
+            // Backspace is handled separately below, with auto-repeat.
+            if k == Keycode::Backspace {
+                continue;
+            }
             if let Some((addr, bit, needs_shift)) = key_target(k) {
                 *rows.entry(addr).or_insert(0) |= bit;
                 if needs_shift {
                     *rows.entry(SHIFT_ADDR).or_insert(0) |= SHIFT_BIT;
                 }
+            }
+        }
+
+        if let Some(pressed_at) = self.backspace_pressed_at {
+            let held = pressed_at.elapsed();
+            let asserted = match held.checked_sub(BACKSPACE_REPEAT_DELAY) {
+                None => true, // initial hold, within the pre-repeat delay
+                Some(since_repeat_started) => {
+                    let phase = since_repeat_started.as_millis() % BACKSPACE_REPEAT_INTERVAL.as_millis();
+                    phase < BACKSPACE_REPEAT_INTERVAL.as_millis() / 2
+                }
+            };
+            if asserted {
+                let (addr, bit, _) =
+                    key_target(Keycode::Backspace).expect("Backspace is a mapped key");
+                *rows.entry(addr).or_insert(0) |= bit;
             }
         }
         // Kept from the previous mapping: Ctrl+AltGr+0 forces '@'. Purpose
