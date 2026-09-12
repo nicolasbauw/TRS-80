@@ -14,6 +14,7 @@ mod keyboard;
 mod machine;
 mod monitor;
 use console_window::ConsoleWindow;
+use display::DisplayMode;
 use machine::{Machine, MachineError};
 use zilog_silicon::console_log::ConsoleLog;
 use zilog_silicon::status_panel::StatusPanel;
@@ -119,6 +120,10 @@ fn launch() -> Result<(), Box<dyn Error>> {
     let status_window_id = status_win.id();
     let mut status_panel = StatusPanel::new(status_win, "trust-80 status panel device")?;
     let mut status_visible = false;
+
+    trs80
+        .display
+        .set_zoom(DisplayMode::from_config(config.display.default_zoom.as_deref()));
 
     let mut events = sdl_context.event_pump()?;
 
@@ -229,18 +234,66 @@ fn launch() -> Result<(), Box<dyn Error>> {
                         status_panel.resize();
                     }
                 }
+                // Display zoom (F1 half, F2 normal, F3 x2, F4 fullscreen) and
+                // the other function-key toggles below: `repeat: false`
+                // because these are one-shot toggles, not text to type -
+                // without it, a key held a little too long sends repeated
+                // KeyDown events from the OS's own typematic repeat and
+                // toggles twice in a row almost instantly (bytebox found
+                // this the hard way, chasing what looked like an OSD
+                // flicker). `window_id == main_window_id`: same reasoning
+                // - without it, any of these also fires from the console
+                // (F11) or status (F12) window, which have their own focus.
+                Event::KeyDown {
+                    keycode: Some(Keycode::F1),
+                    repeat: false,
+                    window_id,
+                    ..
+                } if window_id == main_window_id => trs80.display.set_zoom(DisplayMode::Half),
+                Event::KeyDown {
+                    keycode: Some(Keycode::F2),
+                    repeat: false,
+                    window_id,
+                    ..
+                } if window_id == main_window_id => trs80.display.set_zoom(DisplayMode::Normal),
+                Event::KeyDown {
+                    keycode: Some(Keycode::F3),
+                    repeat: false,
+                    window_id,
+                    ..
+                } if window_id == main_window_id => trs80.display.set_zoom(DisplayMode::X2),
+                Event::KeyDown {
+                    keycode: Some(Keycode::F4),
+                    repeat: false,
+                    window_id,
+                    ..
+                } if window_id == main_window_id => {
+                    // Toggle: F4 exits fullscreen if it's already active.
+                    let mode = if trs80.display.current_zoom() == DisplayMode::Fullscreen {
+                        DisplayMode::Normal
+                    } else {
+                        DisplayMode::Fullscreen
+                    };
+                    trs80.display.set_zoom(mode);
+                }
                 Event::KeyDown {
                     keycode: Some(Keycode::F5),
+                    repeat: false,
+                    window_id,
                     ..
-                } => trs80.display.toggle_crt(),
+                } if window_id == main_window_id => trs80.display.toggle_crt(),
                 Event::KeyDown {
                     keycode: Some(Keycode::F6),
+                    repeat: false,
+                    window_id,
                     ..
-                } => trs80.display.toggle_crt_panel(),
+                } if window_id == main_window_id => trs80.display.toggle_crt_panel(),
                 Event::KeyDown {
                     keycode: Some(Keycode::F11),
+                    repeat: false,
+                    window_id,
                     ..
-                } => {
+                } if window_id == main_window_id => {
                     console_visible = !console_visible;
                     if console_visible {
                         console_window.window_mut().show();
@@ -251,8 +304,10 @@ fn launch() -> Result<(), Box<dyn Error>> {
                 }
                 Event::KeyDown {
                     keycode: Some(Keycode::F12),
+                    repeat: false,
+                    window_id,
                     ..
-                } => {
+                } if window_id == main_window_id => {
                     status_visible = !status_visible;
                     if status_visible {
                         status_panel.window_mut().show();
