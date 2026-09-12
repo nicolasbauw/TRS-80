@@ -121,7 +121,7 @@ pub struct Machine {
 }
 
 impl Machine {
-    pub fn new(window: Window) -> Result<Machine, MachineError> {
+    pub fn new(window: Window, font: &sdl2::ttf::Font) -> Result<Machine, MachineError> {
         let Ok(config) = crate::config::load_config_file() else {
             let user_dirs = UserDirs::new().ok_or(MachineError::ConfigFile)?;
             let mut cfg = user_dirs.home_dir().to_path_buf();
@@ -132,7 +132,7 @@ impl Machine {
             );
             return Err(MachineError::ConfigFile);
         };
-        let Ok(display) = crate::display::Display::new(window) else {
+        let Ok(display) = crate::display::Display::new(window, font) else {
             return Err(MachineError::DisplayError);
         };
         let mut m = Self {

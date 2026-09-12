@@ -28,6 +28,10 @@ fn launch() -> Result<(), Box<dyn Error>> {
     let window = video_subsystem
         .window("TRuSt-80", config.display.width, config.display.height)
         .position_centered()
+        .resizable()
+        // No-op outside macOS; there, required for wgpu to create a
+        // surface from this window's handle.
+        .metal_view()
         .build()?;
 
     let Ok(font) = ttf_context.load_font(config.display.font, config.display.font_size) else {
@@ -35,7 +39,7 @@ fn launch() -> Result<(), Box<dyn Error>> {
     };
 
     // Creating the TRS-80
-    let mut trs80 = Machine::new(window)?;
+    let mut trs80 = Machine::new(window, &font)?;
 
     let mut events = sdl_context.event_pump()?;
 
@@ -53,6 +57,11 @@ fn launch() -> Result<(), Box<dyn Error>> {
                     keycode: Some(Keycode::F12),
                     ..
                 } => break 'running,
+                Event::Window {
+                    win_event:
+                        sdl2::event::WindowEvent::SizeChanged(..) | sdl2::event::WindowEvent::Resized(..),
+                    ..
+                } => trs80.display.resize(),
                 _ => {}
             }
         }
