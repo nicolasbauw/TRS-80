@@ -12,6 +12,7 @@ mod console_window;
 mod display;
 mod hexconversion;
 mod keyboard;
+mod keys;
 mod machine;
 mod monitor;
 use console_window::ConsoleWindow;

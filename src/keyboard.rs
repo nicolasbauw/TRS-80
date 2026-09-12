@@ -1,8 +1,116 @@
 use crate::bus::TrsBus;
-use sdl2::{event::Event, keyboard::Keycode};
+use crate::keys::Keycode;
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 use zilog_z80::bus::Bus;
+
+/// Translates an SDL2 keycode - the character it produces, already
+/// layout/shift-resolved by the host - into our own host-independent
+/// `Keycode` (see `keys.rs`). `None` for anything the TRS-80 matrix has no
+/// use for (the very large majority of SDL2's keycodes).
+fn from_sdl(k: sdl2::keyboard::Keycode) -> Option<Keycode> {
+    use sdl2::keyboard::Keycode as Sdl;
+    Some(match k {
+        Sdl::A => Keycode::A,
+        Sdl::B => Keycode::B,
+        Sdl::C => Keycode::C,
+        Sdl::D => Keycode::D,
+        Sdl::E => Keycode::E,
+        Sdl::F => Keycode::F,
+        Sdl::G => Keycode::G,
+        Sdl::H => Keycode::H,
+        Sdl::I => Keycode::I,
+        Sdl::J => Keycode::J,
+        Sdl::K => Keycode::K,
+        Sdl::L => Keycode::L,
+        Sdl::M => Keycode::M,
+        Sdl::N => Keycode::N,
+        Sdl::O => Keycode::O,
+        Sdl::P => Keycode::P,
+        Sdl::Q => Keycode::Q,
+        Sdl::R => Keycode::R,
+        Sdl::S => Keycode::S,
+        Sdl::T => Keycode::T,
+        Sdl::U => Keycode::U,
+        Sdl::V => Keycode::V,
+        Sdl::W => Keycode::W,
+        Sdl::X => Keycode::X,
+        Sdl::Y => Keycode::Y,
+        Sdl::Z => Keycode::Z,
+        Sdl::Num0 => Keycode::Num0,
+        Sdl::Num1 => Keycode::Num1,
+        Sdl::Num2 => Keycode::Num2,
+        Sdl::Num3 => Keycode::Num3,
+        Sdl::Num4 => Keycode::Num4,
+        Sdl::Num5 => Keycode::Num5,
+        Sdl::Num6 => Keycode::Num6,
+        Sdl::Num7 => Keycode::Num7,
+        Sdl::Num8 => Keycode::Num8,
+        Sdl::Num9 => Keycode::Num9,
+        Sdl::Kp0 => Keycode::Kp0,
+        Sdl::Kp1 => Keycode::Kp1,
+        Sdl::Kp2 => Keycode::Kp2,
+        Sdl::Kp3 => Keycode::Kp3,
+        Sdl::Kp4 => Keycode::Kp4,
+        Sdl::Kp5 => Keycode::Kp5,
+        Sdl::Kp6 => Keycode::Kp6,
+        Sdl::Kp7 => Keycode::Kp7,
+        Sdl::Kp8 => Keycode::Kp8,
+        Sdl::Kp9 => Keycode::Kp9,
+        Sdl::KpAt => Keycode::KpAt,
+        Sdl::KpPercent => Keycode::KpPercent,
+        Sdl::KpAmpersand => Keycode::KpAmpersand,
+        Sdl::KpLeftParen => Keycode::KpLeftParen,
+        Sdl::KpRightParen => Keycode::KpRightParen,
+        Sdl::KpColon => Keycode::KpColon,
+        Sdl::KpMultiply => Keycode::KpMultiply,
+        Sdl::KpPlus => Keycode::KpPlus,
+        Sdl::KpComma => Keycode::KpComma,
+        Sdl::KpLess => Keycode::KpLess,
+        Sdl::KpMinus => Keycode::KpMinus,
+        Sdl::KpEquals => Keycode::KpEquals,
+        Sdl::KpPeriod => Keycode::KpPeriod,
+        Sdl::KpGreater => Keycode::KpGreater,
+        Sdl::KpDivide => Keycode::KpDivide,
+        Sdl::KpEnter => Keycode::KpEnter,
+        Sdl::At => Keycode::At,
+        Sdl::Exclaim => Keycode::Exclaim,
+        Sdl::Quotedbl => Keycode::Quotedbl,
+        Sdl::Hash => Keycode::Hash,
+        Sdl::Dollar => Keycode::Dollar,
+        Sdl::Percent => Keycode::Percent,
+        Sdl::Ampersand => Keycode::Ampersand,
+        Sdl::Quote => Keycode::Quote,
+        Sdl::LeftParen => Keycode::LeftParen,
+        Sdl::RightParen => Keycode::RightParen,
+        Sdl::Colon => Keycode::Colon,
+        Sdl::Asterisk => Keycode::Asterisk,
+        Sdl::Semicolon => Keycode::Semicolon,
+        Sdl::Plus => Keycode::Plus,
+        Sdl::Comma => Keycode::Comma,
+        Sdl::Less => Keycode::Less,
+        Sdl::Minus => Keycode::Minus,
+        Sdl::Equals => Keycode::Equals,
+        Sdl::Period => Keycode::Period,
+        Sdl::Greater => Keycode::Greater,
+        Sdl::Slash => Keycode::Slash,
+        Sdl::Question => Keycode::Question,
+        Sdl::Return => Keycode::Return,
+        Sdl::Home => Keycode::Home,
+        Sdl::End => Keycode::End,
+        Sdl::Up => Keycode::Up,
+        Sdl::Down => Keycode::Down,
+        Sdl::Left => Keycode::Left,
+        Sdl::Right => Keycode::Right,
+        Sdl::Backspace => Keycode::Backspace,
+        Sdl::Space => Keycode::Space,
+        Sdl::LShift => Keycode::LShift,
+        Sdl::RShift => Keycode::RShift,
+        Sdl::LCtrl => Keycode::LCtrl,
+        Sdl::RAlt => Keycode::RAlt,
+        _ => return None,
+    })
+}
 
 // Real TRS-80 keyboard hardware had no auto-repeat: the ROM's keyboard
 // scan is edge-triggered, so a key held down just reads as pressed once,
@@ -128,39 +236,70 @@ impl Keyboard {
         }
     }
 
+    // The ISO "< >" key (common on AZERTY and other European layouts, next
+    // to left shift) doesn't reliably resolve to a shifted Keycode on every
+    // platform/driver: this same physical key was observed always reporting
+    // `Less`, even while shift was held, never `Greater`, under sdl2-compat
+    // (SDL3 under an SDL2 shim - see keyboard.rs's other sdl2-compat
+    // comments for the pattern of this compat layer surfacing gaps real
+    // SDL2 didn't have). Since we already track physical Shift ourselves,
+    // this corrects it by hand rather than trusting SDL's resolved keycode
+    // for this one specific key.
+    fn fixup_less_greater(&self, k: Keycode) -> Keycode {
+        if k == Keycode::Less
+            && (self.pressed.contains(&Keycode::LShift) || self.pressed.contains(&Keycode::RShift))
+        {
+            Keycode::Greater
+        } else {
+            k
+        }
+    }
+
     // sdl2's KeyboardState::pressed_scancodes() scans SDL's whole internal
     // key state array and decodes every raw value into a Scancode; under
     // sdl2-compat (SDL3 underneath) that array is sized/populated
     // differently and contains values the sdl2 crate's SDL2-only enum
     // doesn't recognize, which panics. Tracking press/release from the
     // event stream instead sidesteps that array entirely.
-    pub fn handle_event(&mut self, event: &Event) {
+    pub fn handle_event(&mut self, event: &sdl2::event::Event) {
         match event {
-            Event::KeyDown {
+            sdl2::event::Event::KeyDown {
                 keycode: Some(k), ..
             } => {
+                let Some(k) = from_sdl(*k) else { return };
+                let k = self.fixup_less_greater(k);
                 // Ignores the host's own OS-level typematic repeat: the
                 // repeat timing below is driven by our own clock instead,
                 // so behavior doesn't depend on the host's repeat-rate
                 // settings.
-                if *k == Keycode::Backspace && self.backspace_pressed_at.is_none() {
+                if k == Keycode::Backspace && self.backspace_pressed_at.is_none() {
                     self.backspace_pressed_at = Some(Instant::now());
                 }
-                self.pressed.insert(*k);
+                self.pressed.insert(k);
             }
-            Event::KeyUp {
+            sdl2::event::Event::KeyUp {
                 keycode: Some(k), ..
             } => {
-                if *k == Keycode::Backspace {
+                let Some(k) = from_sdl(*k) else { return };
+                if k == Keycode::Backspace {
                     self.backspace_pressed_at = None;
                 }
-                self.pressed.remove(k);
+                if k == Keycode::Less {
+                    // Whichever of the two this KeyDown was resolved to
+                    // (see fixup_less_greater) - shift may have been
+                    // released before this key, so its *current* state
+                    // can't be trusted to say which one was inserted.
+                    self.pressed.remove(&Keycode::Less);
+                    self.pressed.remove(&Keycode::Greater);
+                } else {
+                    self.pressed.remove(&k);
+                }
             }
             // Losing focus (alt-tab, clicking another window...) means no
             // KeyUp will ever arrive for whatever was held at that point -
             // without this, that key reads as permanently pressed until
             // the user happens to press and release it again.
-            Event::Window {
+            sdl2::event::Event::Window {
                 win_event: sdl2::event::WindowEvent::FocusLost,
                 ..
             } => {
