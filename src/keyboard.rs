@@ -155,6 +155,17 @@ impl Keyboard {
                 }
                 self.pressed.remove(k);
             }
+            // Losing focus (alt-tab, clicking another window...) means no
+            // KeyUp will ever arrive for whatever was held at that point -
+            // without this, that key reads as permanently pressed until
+            // the user happens to press and release it again.
+            Event::Window {
+                win_event: sdl2::event::WindowEvent::FocusLost,
+                ..
+            } => {
+                self.pressed.clear();
+                self.backspace_pressed_at = None;
+            }
             _ => {}
         }
     }

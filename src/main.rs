@@ -40,13 +40,14 @@ fn launch() -> Result<(), Box<dyn Error>> {
     let mut trs80 = Machine::new(window)?;
     trs80.set_timings(refresh_rate);
 
+    let mut events = sdl_context.event_pump()?;
+
     // SDL loop
     'running: loop {
         // CPU loop
         trs80.cpu_loop();
 
         // SDL events
-        let mut events = sdl_context.event_pump()?;
         for event in events.poll_iter() {
             trs80.keyboard.handle_event(&event);
             match event {
