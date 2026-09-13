@@ -1,7 +1,6 @@
 use crate::bus::TrsBus;
 use crate::keys::Keycode;
 use std::collections::{HashMap, HashSet};
-use std::time::{Duration, Instant};
 use zilog_z80::bus::Bus;
 
 // Real TRS-80 keyboard hardware had no auto-repeat: the ROM's keyboard
@@ -14,8 +13,16 @@ use zilog_z80::bus::Bus;
 // interval (not just re-asserted) so the ROM's edge-triggered scan sees a
 // fresh press each time, rather than one continuous hold it only counts
 // once.
-const BACKSPACE_REPEAT_DELAY: Duration = Duration::from_millis(500);
-const BACKSPACE_REPEAT_INTERVAL: Duration = Duration::from_millis(80);
+//
+// Seconds (f64), not `std::time::Duration`/`Instant`: `Instant::now()`
+// compiles for wasm32-unknown-unknown but panics at runtime with no proper
+// time source ("panicked at library/std/src/sys/time/unsupported.rs") -
+// this crate has no business assuming a platform clock exists at all. The
+// caller supplies `now` instead (desktop: its own `Instant`-based clock;
+// trust-80-web: egui's `ctx.input(|i| i.time)`), exactly the workaround
+// bytebox-web already uses for the equivalent problem.
+const BACKSPACE_REPEAT_DELAY_SECS: f64 = 0.5;
+const BACKSPACE_REPEAT_INTERVAL_SECS: f64 = 0.08;
 
 /// TRS-80 Model I keyboard matrix: 8 memory-mapped rows, one address bit
 /// per row (0x3801, 0x3802, 0x3804, 0x3808, 0x3810, 0x3820, 0x3840,
@@ -115,17 +122,12 @@ fn key_target(k: Keycode) -> Option<(u16, u8, bool)> {
     })
 }
 
-// NOTE for a future wasm frontend: `Instant::now()` (used for the backspace
-// auto-repeat timer below) compiles for wasm32-unknown-unknown but panics
-// at runtime with no proper time source - bytebox-web works around the
-// equivalent problem by deriving elapsed time from egui's own
-// `ctx.input(|i| i.time)` instead of `Instant`. Not addressed here: this
-// crate split is a prerequisite step, not the wasm port itself, and this
-// is the one piece of code in this file with a real (if narrow) portability
-// gap left to close when that work actually starts.
 pub struct Keyboard {
     pressed: HashSet<Keycode>,
-    backspace_pressed_at: Option<Instant>,
+    /// Caller-supplied clock reading (seconds) at the moment Backspace was
+    /// first pressed - see the doc comment on `BACKSPACE_REPEAT_DELAY_SECS`
+    /// for why this isn't `std::time::Instant`.
+    backspace_pressed_at: Option<f64>,
 }
 
 impl Default for Keyboard {
@@ -145,8 +147,10 @@ impl Keyboard {
     /// Registers `k` as held, until a matching `key_up`. Frontends translate
     /// their own input events (SDL2 keycodes, browser KeyboardEvents...)
     /// into `Keycode` before calling this - see e.g. the desktop app's
-    /// `keyboard.rs::from_sdl`.
-    pub fn key_down(&mut self, k: Keycode) {
+    /// `keyboard.rs::from_sdl`. `now` is the caller's own clock reading, in
+    /// seconds (monotonic, arbitrary epoch as long as it's consistent
+    /// within a given caller) - see `BACKSPACE_REPEAT_DELAY_SECS`.
+    pub fn key_down(&mut self, k: Keycode, now: f64) {
         // Ignores the host's own OS-level typematic repeat: the repeat
         // timing below is driven by our own clock instead, so behavior
         // doesn't depend on the host's repeat-rate settings. Frontends are
@@ -154,7 +158,7 @@ impl Keyboard {
         // repeat event - a repeat calling this again is harmless either way
         // (HashSet insert, and backspace_pressed_at only ever set from None).
         if k == Keycode::Backspace && self.backspace_pressed_at.is_none() {
-            self.backspace_pressed_at = Some(Instant::now());
+            self.backspace_pressed_at = Some(now);
         }
         self.pressed.insert(k);
     }
@@ -175,7 +179,9 @@ impl Keyboard {
         self.backspace_pressed_at = None;
     }
 
-    pub fn update(&mut self, bus: &mut TrsBus) {
+    /// `now` is the same clock reading passed to `key_down` - see its own
+    /// doc comment.
+    pub fn update(&mut self, bus: &mut TrsBus, now: f64) {
         let mut rows: HashMap<u16, u8> = HashMap::new();
         for &k in &self.pressed {
             // Backspace is handled separately below, with auto-repeat.
@@ -191,13 +197,13 @@ impl Keyboard {
         }
 
         if let Some(pressed_at) = self.backspace_pressed_at {
-            let held = pressed_at.elapsed();
-            let asserted = match held.checked_sub(BACKSPACE_REPEAT_DELAY) {
-                None => true, // initial hold, within the pre-repeat delay
-                Some(since_repeat_started) => {
-                    let phase = since_repeat_started.as_millis() % BACKSPACE_REPEAT_INTERVAL.as_millis();
-                    phase < BACKSPACE_REPEAT_INTERVAL.as_millis() / 2
-                }
+            let held = (now - pressed_at).max(0.0);
+            let since_repeat_started = held - BACKSPACE_REPEAT_DELAY_SECS;
+            let asserted = if since_repeat_started < 0.0 {
+                true // initial hold, within the pre-repeat delay
+            } else {
+                let phase = since_repeat_started % BACKSPACE_REPEAT_INTERVAL_SECS;
+                phase < BACKSPACE_REPEAT_INTERVAL_SECS / 2.0
             };
             if asserted {
                 let (addr, bit, _) =

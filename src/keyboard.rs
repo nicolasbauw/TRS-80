@@ -118,6 +118,11 @@ fn from_sdl(k: sdl2::keyboard::Keycode) -> Option<Keycode> {
 pub struct Keyboard {
     inner: CoreKeyboard,
     shift_held: bool,
+    // Core's own clock, in seconds since this struct was created - see
+    // `trust_80_core::keyboard::Keyboard::key_down`'s doc comment for why
+    // core takes a caller-supplied `f64` rather than reading
+    // `std::time::Instant` itself.
+    start: std::time::Instant,
 }
 
 impl Keyboard {
@@ -125,7 +130,12 @@ impl Keyboard {
         Keyboard {
             inner: CoreKeyboard::new(),
             shift_held: false,
+            start: std::time::Instant::now(),
         }
+    }
+
+    fn now(&self) -> f64 {
+        self.start.elapsed().as_secs_f64()
     }
 
     // The ISO "< >" key (common on AZERTY and other European layouts, next
@@ -161,7 +171,8 @@ impl Keyboard {
                     self.shift_held = true;
                 }
                 let k = self.fixup_less_greater(k);
-                self.inner.key_down(k);
+                let now = self.now();
+                self.inner.key_down(k, now);
             }
             sdl2::event::Event::KeyUp {
                 keycode: Some(k), ..
@@ -197,6 +208,7 @@ impl Keyboard {
     }
 
     pub fn update(&mut self, bus: &mut trust_80_core::bus::TrsBus) {
-        self.inner.update(bus);
+        let now = self.now();
+        self.inner.update(bus, now);
     }
 }
