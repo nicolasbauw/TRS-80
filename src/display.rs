@@ -94,11 +94,22 @@ impl Display {
         // for our own SCREEN_HEIGHT (864) - but since the shader now
         // samples displayed content at full native resolution regardless
         // of this value (see renderer_crt.wgsl's sample_native/scan_factor
-        // split), it's free to be tuned purely for how convincing the
-        // scanlines LOOK, independent of hardware accuracy or font
-        // sharpness. 4.5 produced scanlines noticeably thicker/coarser
-        // than bytebox's own (2.0, for its own buffer/oversampling) at the
-        // same window size - 2.5 here reads much closer to a real CRT.
+        // split), it's free to be tuned for how convincing the scanlines
+        // LOOK, not just hardware accuracy. 4.5 (one real monitor scanline
+        // per TRS-80 pixel row) produced scanlines noticeably thicker/
+        // coarser than bytebox's own (2.0) at the same window size.
+        //
+        // 2.5, not a clean divisor of 4.5: a real CRT's raster runs at a
+        // fixed frequency that has no reason to line up with the source
+        // computer's own logical pixel grid - the TRS-80 (like most 8-bit
+        // micros of the era) doesn't genuinely interlace, it just feeds the
+        // same content to both NTSC fields, so its ~192 logical lines
+        // really do land arbitrarily across NTSC's ~480 active scanlines
+        // (480/192 = 2.5, exactly this value) with no phase alignment to
+        // speak of. What first looked like a bug (the scanline phase
+        // "drifting" against the font's pixel grid at 2.5, unlike a clean
+        // divisor such as 2.25) is arguably the physically accurate
+        // behavior, not an artifact to avoid.
         // Passing 1.0 - claiming every buffer row is already a real
         // scanline - made them razor-thin relative to the actual output
         // size and the shader's scanline effect nearly invisible
