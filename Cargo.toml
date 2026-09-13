@@ -21,7 +21,7 @@ readme = "README.md"
 
 [dependencies]
 trust-80-core = { path = "core" }
-zilog_silicon = { path = "../zilog_silicon", default-features = false }
+zilog_silicon = { git = "ssh://git@github.com/nicolasbauw/zilog_silicon.git", branch = "master", default-features = false }
 egui = "0.33.3"
 image = { version = "0.25", default-features = false, features = ["png"] }
 toml = "0.7.0"
