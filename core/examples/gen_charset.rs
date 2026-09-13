@@ -35,7 +35,11 @@ fn main() {
     println!("// (row-major, one byte per pixel: 0 = background, 255 = full ink).");
     println!("pub const CELL_W: usize = {CELL_W};");
     println!("pub const CELL_H: usize = {CELL_H};");
-    println!("pub const CHARSET: [[u8; CELL_W * CELL_H]; 256] = [");
+    // static, not const: ~243KB of read-only data - const has no fixed
+    // address, so each use site could get its own copy inlined into the
+    // binary (clippy::large_const_arrays). static has one address,
+    // referenced by pointer wherever it's indexed.
+    println!("pub static CHARSET: [[u8; CELL_W * CELL_H]; 256] = [");
 
     for code in 0u32..256 {
         let ch = char::from_u32(0xE000 + code).unwrap();

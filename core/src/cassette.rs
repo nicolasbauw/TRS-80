@@ -7,6 +7,12 @@ pub struct CassetteReader {
     tape_position: usize,
 }
 
+impl Default for CassetteReader {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CassetteReader {
     pub fn new() -> Self {
         Self {
