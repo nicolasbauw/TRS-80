@@ -90,17 +90,21 @@ impl Display {
         //
         // pixels_per_scanline is how many *buffer* rows make up one real
         // CRT scanline. The real TRS-80 Model I screen was 384x192 pixels
-        // (192 real scanlines) - our buffer renders at SCREEN_HEIGHT (864)
-        // for legible antialiased text, an 864/192 = 4.5x vertical
-        // oversampling versus real hardware, the same idea as the CPC
-        // renderer's own 2x (its buffer doubles vertical resolution, so
-        // pixels_per_scanline=2 there). Passing 1.0 here - claiming every
-        // buffer row is already a real scanline - made them razor-thin
-        // relative to the actual output size and the shader's scanline
-        // effect nearly invisible regardless of scanline_beam/strength
-        // (see renderer_crt.wgsl's own comment on line_height for exactly
-        // this failure mode).
-        let mut renderer = Renderer::new(window, SCREEN_WIDTH, SCREEN_HEIGHT, 4.5)?;
+        // (192 real scanlines), i.e. 864/192 = 4.5x vertical oversampling
+        // for our own SCREEN_HEIGHT (864) - but since the shader now
+        // samples displayed content at full native resolution regardless
+        // of this value (see renderer_crt.wgsl's sample_native/scan_factor
+        // split), it's free to be tuned purely for how convincing the
+        // scanlines LOOK, independent of hardware accuracy or font
+        // sharpness. 4.5 produced scanlines noticeably thicker/coarser
+        // than bytebox's own (2.0, for its own buffer/oversampling) at the
+        // same window size - 2.5 here reads much closer to a real CRT.
+        // Passing 1.0 - claiming every buffer row is already a real
+        // scanline - made them razor-thin relative to the actual output
+        // size and the shader's scanline effect nearly invisible
+        // regardless of scanline_beam/strength (see renderer_crt.wgsl's
+        // own comment on line_height for exactly this failure mode).
+        let mut renderer = Renderer::new(window, SCREEN_WIDTH, SCREEN_HEIGHT, 2.5)?;
 
         // A saved [crt] section (F6's "Save" button) overrides this tuned
         // baseline, field by field - see `crt_settings_from_config`.
