@@ -95,7 +95,7 @@ fn launch() -> Result<(), Box<dyn Error>> {
     );
     let cmd_sender = trs80.command_sender();
     let mut console_log = ConsoleLog::new();
-    let mut display = Display::new(window)?;
+    let mut display = Display::new(window, &config.crt)?;
     let mut keyboard = Keyboard::new();
 
     // Console window (F11): replaces the old stdin-driven terminal console

@@ -54,8 +54,36 @@ pub struct Display {
     current_zoom: DisplayMode,
 }
 
+/// bytebox's own `CrtSettings::default()` (unchanged for the two fields not
+/// overridden here - mask_cell_px/mask_min/mask_strength/beam_bloom) was
+/// tuned by eye against its buffer's 2x vertical oversampling; ours is
+/// 4.5x, so the same scanline_strength/horizontal_blur read as far too
+/// strong, and far too blurry, at this finer pitch. scanline_beam was
+/// further lowered from bytebox's own 9.0 to 6.5 (a wider beam) once the
+/// shader stopped needlessly collapsing vertical resolution (see
+/// renderer_crt.wgsl): at 9.0, our own font's finer detail made the beam
+/// read as too narrow/harsh. These four are tuned by eye for our own
+/// oversampling factor and font instead - still fully adjustable live via
+/// the F6 panel. Must stay in sync with trust-80-web's own
+/// `crt::CrtSettings::default()`.
+///
+/// The single source of truth for "no [crt] section saved yet" (`new()`)
+/// AND for the F6 panel's own "Reset to defaults" button - using the bare
+/// `zilog_silicon::renderer::CrtSettings::default()` for the latter was a
+/// bug: it silently reset scanline_beam back to bytebox's 9.0 instead of
+/// trust-80's own 6.5.
+fn tuned_crt_defaults() -> zilog_silicon::renderer::CrtSettings {
+    zilog_silicon::renderer::CrtSettings {
+        scanline_beam: 6.5,
+        scanline_strength: 0.5,
+        horizontal_blur: 0.75,
+        bright_boost: 1.05,
+        ..zilog_silicon::renderer::CrtSettings::default()
+    }
+}
+
 impl Display {
-    pub fn new(window: Window) -> Result<Display, Box<dyn Error>> {
+    pub fn new(window: Window, crt_config: &crate::config::CrtConfig) -> Result<Display, Box<dyn Error>> {
         // The native "screen" size (see trust_80_core::video) that
         // zilog_silicon's renderer letterboxes/scales into whatever the
         // actual window size is.
@@ -74,26 +102,12 @@ impl Display {
         // this failure mode).
         let mut renderer = Renderer::new(window, SCREEN_WIDTH, SCREEN_HEIGHT, 4.5)?;
 
-        // bytebox's own CrtSettings::default() (unchanged for the two
-        // fields not overridden here - mask_cell_px/mask_min/mask_strength/
-        // beam_bloom) was tuned by eye against its buffer's 2x vertical
-        // oversampling; ours is 4.5x, so the same scanline_strength/
-        // horizontal_blur read as far too strong, and far too blurry, at
-        // this finer pitch. scanline_beam was further lowered from
-        // bytebox's own 9.0 to 6.5 (a wider beam) once the shader stopped
-        // needlessly collapsing vertical resolution (see renderer_crt.wgsl):
-        // at 9.0, our own font's finer detail made the beam read as too
-        // narrow/harsh. These four are tuned by eye for our own
-        // oversampling factor and font instead - still fully adjustable
-        // live via the F6 panel. Must stay in sync with trust-80-web's own
-        // `crt::CrtSettings::default()`.
-        renderer.set_crt_settings(zilog_silicon::renderer::CrtSettings {
-            scanline_beam: 6.5,
-            scanline_strength: 0.5,
-            horizontal_blur: 0.75,
-            bright_boost: 1.05,
-            ..zilog_silicon::renderer::CrtSettings::default()
-        });
+        // A saved [crt] section (F6's "Save" button) overrides this tuned
+        // baseline, field by field - see `crt_settings_from_config`.
+        renderer.set_crt_settings(crate::config::crt_settings_from_config(
+            crt_config,
+            tuned_crt_defaults(),
+        ));
 
         Ok(Display {
             renderer,
@@ -164,7 +178,7 @@ impl Display {
             let mut settings = self.renderer.crt_settings();
             let mut open = true;
             let mut requested_zoom: Option<DisplayMode> = None;
-            let mut save_zoom_requested = false;
+            let mut save_requested = false;
             let current_zoom = self.current_zoom;
             // Real window size, read directly from SDL rather than egui's
             // own state this frame (same reasoning as zilog_silicon's
@@ -203,12 +217,7 @@ impl Display {
                                 requested_zoom = Some(DisplayMode::Fullscreen);
                             }
                         });
-                        ui.horizontal(|ui| {
-                            ui.label(format!("Current zoom: {}", current_zoom.as_config_str()));
-                            if ui.button("Save as startup default").clicked() {
-                                save_zoom_requested = true;
-                            }
-                        });
+                        ui.label(format!("Current zoom: {}", current_zoom.as_config_str()));
 
                         ui.separator();
                         ui.label("CRT shader");
@@ -226,9 +235,18 @@ impl Display {
                             egui::Slider::new(&mut settings.horizontal_blur, 0.0..=1.0)
                                 .text("Horizontal blur"),
                         );
-                        if ui.button("Reset to defaults").clicked() {
-                            settings = zilog_silicon::renderer::CrtSettings::default();
-                        }
+                        ui.horizontal(|ui| {
+                            if ui.button("Reset to defaults").clicked() {
+                                settings = tuned_crt_defaults();
+                            }
+                            // One button for everything currently in this
+                            // panel (zoom + CRT shader) - saving zoom alone
+                            // while the CRT sliders were adjusted but not
+                            // saved anywhere used to be the only option.
+                            if ui.button("Save").clicked() {
+                                save_requested = true;
+                            }
+                        });
                     });
                 };
                 self.renderer.present(&self.frame, Some(&mut overlay));
@@ -238,15 +256,16 @@ impl Display {
             if let Some(mode) = requested_zoom {
                 self.set_zoom(mode);
             }
-            if save_zoom_requested {
-                match crate::config::load_config_file() {
-                    Ok(mut config) => {
-                        config.display.default_zoom = Some(self.current_zoom.as_config_str().to_string());
-                        if let Err(e) = crate::config::save_display_config(&config.display) {
-                            eprintln!("Can't save default zoom: {e}");
-                        }
-                    }
-                    Err(e) => eprintln!("Can't save default zoom: {e}"),
+            if save_requested {
+                let display_config = crate::config::ScreenConfig {
+                    default_zoom: Some(self.current_zoom.as_config_str().to_string()),
+                };
+                if let Err(e) = crate::config::save_display_config(&display_config) {
+                    eprintln!("Can't save display settings: {e}");
+                }
+                let crt_config = crate::config::crt_settings_to_config(self.renderer.crt_settings());
+                if let Err(e) = crate::config::save_crt_config(&crt_config) {
+                    eprintln!("Can't save CRT settings: {e}");
                 }
             }
         } else {

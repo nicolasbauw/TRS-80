@@ -31,6 +31,8 @@ impl From<std::io::Error> for ConfigError {
 pub struct Config {
     #[serde(default)]
     pub display: ScreenConfig,
+    #[serde(default)]
+    pub crt: CrtConfig,
     pub memory: MemConfig,
     pub storage: StorageConfig,
     pub debug: Debug,
@@ -43,6 +45,69 @@ pub struct ScreenConfig {
     /// "normal", the same way bytebox's own `default_zoom` does.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_zoom: Option<String>,
+}
+
+/// CRT shader tuning (F6 panel), saved as its own `[crt]` section - same
+/// idea as bytebox's own `CrtConfig`. Every field is optional: an absent
+/// (or partial) `[crt]` section falls back field by field to `Display`'s
+/// own tuned defaults, not `zilog_silicon`'s bare ones - see
+/// `crt_settings_from_config`.
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+pub struct CrtConfig {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mask_cell_px: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mask_min: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mask_strength: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scanline_beam: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scanline_strength: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub beam_bloom: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bright_boost: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub horizontal_blur: Option<f32>,
+}
+
+/// Applies the saved `[crt]` section over `defaults`, field by field - a
+/// partial (or absent) section stays perfectly valid. `defaults` is
+/// `Display`'s own tuned baseline (see its `new()`), not
+/// `CrtSettings::default()`: that library default is tuned for bytebox's
+/// own 2x buffer oversampling, not our 4.5x/font.
+pub fn crt_settings_from_config(
+    crt: &CrtConfig,
+    defaults: zilog_silicon::renderer::CrtSettings,
+) -> zilog_silicon::renderer::CrtSettings {
+    zilog_silicon::renderer::CrtSettings {
+        mask_cell_px: crt.mask_cell_px.unwrap_or(defaults.mask_cell_px),
+        mask_min: crt.mask_min.unwrap_or(defaults.mask_min),
+        mask_strength: crt.mask_strength.unwrap_or(defaults.mask_strength),
+        scanline_beam: crt.scanline_beam.unwrap_or(defaults.scanline_beam),
+        scanline_strength: crt.scanline_strength.unwrap_or(defaults.scanline_strength),
+        beam_bloom: crt.beam_bloom.unwrap_or(defaults.beam_bloom),
+        bright_boost: crt.bright_boost.unwrap_or(defaults.bright_boost),
+        horizontal_blur: crt.horizontal_blur.unwrap_or(defaults.horizontal_blur),
+    }
+}
+
+/// Reciprocal of [`crt_settings_from_config`], for saving: every field is
+/// filled in, even ones left at their default - saving freezes a look, so a
+/// later change to the tuned defaults shouldn't silently change what the
+/// user already chose to keep.
+pub fn crt_settings_to_config(settings: zilog_silicon::renderer::CrtSettings) -> CrtConfig {
+    CrtConfig {
+        mask_cell_px: Some(settings.mask_cell_px),
+        mask_min: Some(settings.mask_min),
+        mask_strength: Some(settings.mask_strength),
+        scanline_beam: Some(settings.scanline_beam),
+        scanline_strength: Some(settings.scanline_strength),
+        beam_bloom: Some(settings.beam_bloom),
+        bright_boost: Some(settings.bright_boost),
+        horizontal_blur: Some(settings.horizontal_blur),
+    }
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -82,6 +147,12 @@ pub fn load_config_file() -> Result<Config, ConfigError> {
 pub fn save_display_config(display: &ScreenConfig) -> Result<(), ConfigError> {
     let body = toml::to_string(display).map_err(|_e| ConfigError::ConfigFileFmt)?;
     write_config_section("display", &body)
+}
+
+/// Same idea as [`save_display_config`], for the `[crt]` section.
+pub fn save_crt_config(crt: &CrtConfig) -> Result<(), ConfigError> {
+    let body = toml::to_string(crt).map_err(|_e| ConfigError::ConfigFileFmt)?;
+    write_config_section("crt", &body)
 }
 
 fn write_config_section(section: &str, body: &str) -> Result<(), ConfigError> {
