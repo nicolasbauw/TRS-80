@@ -1,6 +1,6 @@
 [package]
 name = "trust-80-core"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 authors = ["Nicolas BAUW <nbauw@hotmail.com>"]
 description = "TRS-80 (model 1) emulation core: CPU/bus wiring, keyboard matrix, cassette, monitor commands - no windowing, no rendering backend"
