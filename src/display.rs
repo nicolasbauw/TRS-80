@@ -74,16 +74,23 @@ impl Display {
         // this failure mode).
         let mut renderer = Renderer::new(window, SCREEN_WIDTH, SCREEN_HEIGHT, 4.5)?;
 
-        // bytebox's own CrtSettings::default() (unchanged - not overridden
-        // here, just started from a different point) was tuned by eye
-        // against its buffer's 2x vertical oversampling; ours is 4.5x, so
-        // the same scanline_strength/horizontal_blur read as far too
-        // strong, and far too blurry, at this finer pitch. These three are
-        // tuned by eye for our own oversampling factor instead - still
-        // fully adjustable live via the F6 panel.
+        // bytebox's own CrtSettings::default() (unchanged for the two
+        // fields not overridden here - mask_cell_px/mask_min/mask_strength/
+        // beam_bloom) was tuned by eye against its buffer's 2x vertical
+        // oversampling; ours is 4.5x, so the same scanline_strength/
+        // horizontal_blur read as far too strong, and far too blurry, at
+        // this finer pitch. scanline_beam was further lowered from
+        // bytebox's own 9.0 to 6.5 (a wider beam) once the shader stopped
+        // needlessly collapsing vertical resolution (see renderer_crt.wgsl):
+        // at 9.0, our own font's finer detail made the beam read as too
+        // narrow/harsh. These four are tuned by eye for our own
+        // oversampling factor and font instead - still fully adjustable
+        // live via the F6 panel. Must stay in sync with trust-80-web's own
+        // `crt::CrtSettings::default()`.
         renderer.set_crt_settings(zilog_silicon::renderer::CrtSettings {
-            scanline_strength: 0.28,
-            horizontal_blur: 0.3,
+            scanline_beam: 6.5,
+            scanline_strength: 0.5,
+            horizontal_blur: 0.75,
             bright_boost: 1.05,
             ..zilog_silicon::renderer::CrtSettings::default()
         });
@@ -159,9 +166,28 @@ impl Display {
             let mut requested_zoom: Option<DisplayMode> = None;
             let mut save_zoom_requested = false;
             let current_zoom = self.current_zoom;
+            // Real window size, read directly from SDL rather than egui's
+            // own state this frame (same reasoning as zilog_silicon's
+            // config_panel.rs, whose F6-equivalent this doesn't reuse - see
+            // that file's own comment: reading the SDL size instead of
+            // egui's avoids a frame of lag right after a zoom change).
+            // Without this, the panel stayed a fixed, small size in
+            // fullscreen/high zoom instead of scaling up with the window -
+            // the F1-F4 zoom buttons and CRT sliders became disproportionately
+            // tiny relative to the available "real estate" on a large or
+            // high-DPI screen.
+            let window_size = {
+                let (w, h) = self.renderer.window().drawable_size();
+                egui::vec2(w as f32, h as f32)
+            };
+            let scale = zilog_silicon::ui_scale::content_scale(window_size);
             {
                 let mut overlay = |ctx: &egui::Context| {
-                    egui::Window::new("Display").open(&mut open).show(ctx, |ui| {
+                    egui::Window::new("Display")
+                        .open(&mut open)
+                        .default_width(260.0 * scale)
+                        .show(ctx, |ui| {
+                        ui.set_style(zilog_silicon::ui_scale::scaled_style(ui.style(), scale));
                         ui.label("Zoom");
                         ui.horizontal(|ui| {
                             if ui.button("Half").clicked() {

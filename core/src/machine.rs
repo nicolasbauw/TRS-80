@@ -1,13 +1,9 @@
 use crate::bus::TrsBus;
 use crate::hexconversion::HexStringToUnsigned;
 use crate::monitor::{MonitorCmd, MonitorMessage};
-use std::{
-    collections::HashSet,
-    fmt::Write as _,
-    path::PathBuf,
-    sync::mpsc,
-    time::{Duration, Instant},
-};
+use std::{collections::HashSet, fmt::Write as _, path::PathBuf, sync::mpsc};
+#[cfg(feature = "native")]
+use std::time::{Duration, Instant};
 use zilog_z80::bus::Bus;
 use zilog_z80::cpu::CPU;
 use zilog_z80::dasm;
@@ -21,6 +17,15 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 // immaterial for a BASIC-level emulator, and a large improvement over
 // zilog_z80's own execute_timed(), which measured elapsed time with
 // SystemTime (wall clock, not monotonic) truncated to whole milliseconds.
+//
+// Only used by cpu_loop() below, which is native-only: `Instant::now()`
+// compiles for wasm32-unknown-unknown but panics at runtime with no proper
+// time source ("panicked at library/std/src/sys/time/unsupported.rs"), the
+// same gap keyboard.rs's own comment already flags for the backspace
+// auto-repeat timer. A wasm frontend paces itself from egui's own clock
+// instead (`ctx.input(|i| i.time)`) and drives `cpu.execute()` directly -
+// see trust-80-web's main.rs.
+#[cfg(feature = "native")]
 const CPU_TICK_NANOS: u64 = 565;
 
 // Runaway guard on how many ticks a single cpu_loop() call will try to
@@ -28,8 +33,10 @@ const CPU_TICK_NANOS: u64 = 565;
 // backstop against bursting the CPU past real time after a long pause
 // (breakpoint, minimized window, a slow host). ~100ms of emulated time:
 // several times more than a single vsync-paced frame ever needs to cover.
+#[cfg(feature = "native")]
 const MAX_CATCHUP_TICKS: u32 = 177_000;
 
+#[cfg(feature = "native")]
 fn emulated_duration(ticks: u32) -> Duration {
     Duration::from_nanos(ticks as u64 * CPU_TICK_NANOS)
 }
@@ -69,6 +76,7 @@ pub struct Machine {
     // loading by path can't be the only way.
     #[allow(dead_code)]
     tape_dir: PathBuf,
+    #[cfg(feature = "native")]
     last_tick_time: Instant,
 }
 
@@ -92,6 +100,7 @@ impl Machine {
             rom_size,
             ram_size: ram_size as usize,
             tape_dir,
+            #[cfg(feature = "native")]
             last_tick_time: Instant::now(),
         }
     }
@@ -115,6 +124,19 @@ impl Machine {
         self.running
     }
 
+    /// Cold restart: clears RAM (leaving ROM untouched) and resets PC -
+    /// unlike bytebox's own `power_cycle_from_bytes`, no ROM reload is
+    /// needed here (the TRS-80 has no bank switching to undo), so this is
+    /// synchronous and needs no ROM bytes handed back in. Used directly by
+    /// a frontend's own "Power cycle" button, and by the `pc`/`powercycle`
+    /// console command below.
+    pub fn power_cycle(&mut self) {
+        self.stop();
+        self.bus.clear_mem_slice(self.rom_size, self.ram_size);
+        self.cpu.reg.pc = 0;
+        self.start();
+    }
+
     /// Runs however many T-states correspond to whatever real time has
     /// actually elapsed since the last call, then returns. The pacing comes
     /// from the caller's own frame cadence (e.g. the desktop app's wgpu
@@ -129,6 +151,7 @@ impl Machine {
     /// slower than 100Hz), throttling the whole emulation to
     /// budget/actual_cadence of real speed - a TRS-80 that's supposed to
     /// run at 1.77MHz was measurably crawling at ~60% of that.
+    #[cfg(feature = "native")]
     pub fn cpu_loop(&mut self) {
         if !self.is_running() {
             // Don't let a pause accumulate a backlog of "missed" ticks that
@@ -232,10 +255,7 @@ impl Machine {
                 write!(out, "Reset done !")?;
             }
             MonitorCmd::PowerCycle => {
-                self.stop();
-                self.bus.clear_mem_slice(self.rom_size, self.ram_size);
-                self.cpu.reg.pc = 0;
-                self.start();
+                self.power_cycle();
                 write!(out, "Powercycle done !")?;
             }
             MonitorCmd::Tape => {
