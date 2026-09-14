@@ -66,6 +66,10 @@ fn launch() -> Result<(), Box<dyn Error>> {
     let config = config::load_config_file()?;
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
+    // Needed for keyboard.rs's own AZERTY-symbol resolution: it reads the
+    // actual composed text from `Event::TextInput`, not just SDL's own
+    // (unreliable, for some layout/key combinations) `Keycode`.
+    video_subsystem.text_input().start();
 
     // Initial size is a placeholder: `set_zoom` (below, from
     // config.display.default_zoom) resizes to a real value before the
