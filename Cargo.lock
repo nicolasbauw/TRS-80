@@ -1723,7 +1723,7 @@ dependencies = [
 [[package]]
 name = "zilog_silicon"
 version = "1.0.0"
-source = "git+https://github.com/nicolasbauw/zilog_silicon.git?branch=master#ffbae8589120ec62c021ae9d0037dc669694e77f"
+source = "git+https://github.com/nicolasbauw/zilog_silicon.git?branch=master#7d20ededcac4ee2ed6d6c1ad3a264beb443b5f84"
 dependencies = [
  "bytemuck",
  "egui",

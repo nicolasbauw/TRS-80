@@ -78,9 +78,17 @@ fn tuned_crt_defaults() -> zilog_silicon::renderer::CrtSettings {
         scanline_strength: 0.5,
         horizontal_blur: 0.75,
         bright_boost: 1.05,
+        // NTSC-exact (see the comment on the `Renderer::new` call below):
+        // 480 active lines / 192 TRS-80 logical lines.
+        pixels_per_scanline: NTSC_THEORETICAL_PIXELS_PER_SCANLINE,
         ..zilog_silicon::renderer::CrtSettings::default()
     }
 }
+
+/// Theoretical value of `pixels_per_scanline` for an NTSC screen, for the F6
+/// panel's marker button - see `tuned_crt_defaults`'s doc comment for the
+/// calculation.
+pub const NTSC_THEORETICAL_PIXELS_PER_SCANLINE: f32 = 2.5;
 
 impl Display {
     pub fn new(window: Window, crt_config: &crate::config::CrtConfig) -> Result<Display, Box<dyn Error>> {
@@ -115,7 +123,7 @@ impl Display {
         // size and the shader's scanline effect nearly invisible
         // regardless of scanline_beam/strength (see renderer_crt.wgsl's
         // own comment on line_height for exactly this failure mode).
-        let mut renderer = Renderer::new(window, SCREEN_WIDTH, SCREEN_HEIGHT, 2.5)?;
+        let mut renderer = Renderer::new(window, SCREEN_WIDTH, SCREEN_HEIGHT)?;
 
         // A saved [crt] section (F6's "Save" button) overrides this tuned
         // baseline, field by field - see `crt_settings_from_config`.
@@ -250,6 +258,40 @@ impl Display {
                             egui::Slider::new(&mut settings.horizontal_blur, 0.0..=1.0)
                                 .text("Horizontal blur"),
                         );
+                        ui.horizontal(|ui| {
+                            // `settings.pixels_per_scanline` is the raw
+                            // shader parameter (`line_height`: how many
+                            // *buffer* rows make up one real CRT scanline) -
+                            // bigger means FEWER, coarser scanlines, the
+                            // opposite of what the number suggests. Unlike
+                            // bytebox's own CPC-specific correction (its
+                            // buffer duplicates each raster line, a known
+                            // 2x factor), the TRS-80's 2.5 default was
+                            // deliberately chosen as-is, NOT as a corrected
+                            // hardware ratio (see `tuned_crt_defaults`'s
+                            // doc comment) - so the slider just shows the
+                            // plain reciprocal (scanlines per buffer row),
+                            // fixing the direction without pretending to a
+                            // physical unit it doesn't have.
+                            let mut scanlines_per_row = 1.0 / settings.pixels_per_scanline;
+                            let response = ui.add(
+                                egui::Slider::new(&mut scanlines_per_row, 0.2..=1.0)
+                                    .text("Scanline fineness (higher = more, thinner scanlines)"),
+                            );
+                            if response.changed() {
+                                settings.pixels_per_scanline = 1.0 / scanlines_per_row;
+                            }
+                            let ntsc_scanlines_per_row = 1.0 / NTSC_THEORETICAL_PIXELS_PER_SCANLINE;
+                            if ui
+                                .button("🎯 NTSC")
+                                .on_hover_text(format!(
+                                    "Theoretical value used for the NTSC-tuned default: {ntsc_scanlines_per_row:.2}"
+                                ))
+                                .clicked()
+                            {
+                                settings.pixels_per_scanline = NTSC_THEORETICAL_PIXELS_PER_SCANLINE;
+                            }
+                        });
                         ui.horizontal(|ui| {
                             if ui.button("Reset to defaults").clicked() {
                                 settings = tuned_crt_defaults();

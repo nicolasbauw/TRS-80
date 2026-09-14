@@ -70,6 +70,8 @@ pub struct CrtConfig {
     pub bright_boost: Option<f32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub horizontal_blur: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pixels_per_scanline: Option<f32>,
 }
 
 /// Applies the saved `[crt]` section over `defaults`, field by field - a
@@ -90,6 +92,9 @@ pub fn crt_settings_from_config(
         beam_bloom: crt.beam_bloom.unwrap_or(defaults.beam_bloom),
         bright_boost: crt.bright_boost.unwrap_or(defaults.bright_boost),
         horizontal_blur: crt.horizontal_blur.unwrap_or(defaults.horizontal_blur),
+        pixels_per_scanline: crt
+            .pixels_per_scanline
+            .unwrap_or(defaults.pixels_per_scanline),
     }
 }
 
@@ -107,6 +112,7 @@ pub fn crt_settings_to_config(settings: zilog_silicon::renderer::CrtSettings) ->
         beam_bloom: Some(settings.beam_bloom),
         bright_boost: Some(settings.bright_boost),
         horizontal_blur: Some(settings.horizontal_blur),
+        pixels_per_scanline: Some(settings.pixels_per_scanline),
     }
 }
 
