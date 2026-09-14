@@ -43,6 +43,20 @@ const SHIFT_BIT: u8 = 0x01;
 /// a US host produces '(' via Shift+9, but on the TRS-80's own keyboard,
 /// '(' lives on Shift+8 - this table only cares about the '(' end result,
 /// so typing it on either keyboard just works).
+///
+/// Deliberately has NO entry for `Keycode::LShift`/`RShift` - the host's
+/// own physical Shift key must never assert the TRS-80's shift bit
+/// directly, only a resolved character's own `needs_shift` may. Two
+/// characters commonly share one matrix cell, distinguished only by that
+/// bit (e.g. `.`/`>`, or a digit/its AZERTY symbol) - if the host's raw
+/// Shift were ALSO wired straight to that same bit, holding host-Shift to
+/// type a character that itself needs no TRS-80 shift (e.g. AZERTY's
+/// Shift+";" for ".") would leak the TRS-80 shift bit in anyway, and the
+/// TRS-80 would see its OTHER character sharing that cell (">") instead -
+/// exactly the bug this comment used to not warn about. A frontend may
+/// still track the host's Shift state for its own purposes (disambiguating
+/// a same-frame fallback when text composition doesn't arrive in time,
+/// say), it just must never forward LShift/RShift to this matrix itself.
 fn key_target(k: Keycode) -> Option<(u16, u8, bool)> {
     use Keycode as K;
     Some(match k {
@@ -116,8 +130,8 @@ fn key_target(k: Keycode) -> Option<(u16, u8, bool)> {
         K::Right => (0x3840, 0x40, false),
         K::Space => (0x3840, 0x80, false),
 
-        K::LShift | K::RShift => (SHIFT_ADDR, SHIFT_BIT, false),
-
+        // LShift/RShift: deliberately absent - see this function's own
+        // doc comment.
         _ => return None,
     })
 }
