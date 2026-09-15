@@ -1,8 +1,5 @@
 # TRuSt-80
 
-[![Current Crates.io Version](https://img.shields.io/crates/v/trust-80.svg)](https://crates.io/crates/trust-80)
-[![Downloads badge](https://img.shields.io/crates/d/trust-80.svg)](https://crates.io/crates/trust-80)
-
 TRuSt-80 is a cross-platform TRS-80 (model 1) emulator, based on my [Z80 emulator](https://github.com/nicolasbauw/ZilogZ80).
 It has a working keyboard (mapped by the character your keyboard actually produces, not by the TRS-80's original key positions - type the key that types `"` on your keyboard and you'll get `"` on screen), can run Level 1 and Level 2 basic, and load .cas tape images.
 The TRS-80's CLEAR and BREAK keys have no modern equivalent, so they're mapped to Home and End respectively - not obvious if you don't already know it. A virtual keyboard (F7) also exposes them directly, along with the real CLEAR/BREAK legends.
