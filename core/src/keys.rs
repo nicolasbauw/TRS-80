@@ -98,6 +98,12 @@ pub enum Keycode {
     Return,
     Home,
     End,
+    /// Real TRS-80 Model I key sharing Home's own matrix position (row
+    /// 0x3840, bit 0x02) - see `key_target`'s doc comment.
+    Clear,
+    /// Real TRS-80 Model I key sharing End's own matrix position (row
+    /// 0x3840, bit 0x04) - see `key_target`'s doc comment.
+    Break,
     Up,
     Down,
     Left,

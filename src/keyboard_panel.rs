@@ -15,9 +15,13 @@
 //! margin of error in a click region is harmless here, unlike bytebox's own
 //! pixel-exact approach.
 //!
-//! BREAK and CLEAR are drawn (they're part of the image) but not
-//! interactive: neither has a `Keycode` in the core at all (this emulator
-//! never wired them to anything - see `trust_80_core::keys::Keycode`).
+//! BREAK and CLEAR are wired to `Keycode::Break`/`Keycode::Clear`, which
+//! share their matrix position with `Home`/`End` respectively (see
+//! `key_target`'s own doc comment, core/src/keyboard.rs): on real Model I
+//! hardware, that position IS CLEAR/BREAK - Home/End were only ever a
+//! modern-keyboard convenience mapped onto it, since a PC keyboard has no
+//! CLEAR/BREAK of its own. This panel exposes the real legends too, for
+//! completeness, even though neither has a host key to trigger it from.
 //!
 //! SHIFT is UI-only, never sent to the core directly (mirrors the core's
 //! own `key_target` doc comment: the core deliberately has no matrix
@@ -78,7 +82,7 @@ const fn shift(x0: f32, y0: f32, x1: f32, y1: f32) -> VirtualKey {
 
 #[rustfmt::skip]
 const KEYS: &[VirtualKey] = &[
-    // Row 1 (y 160-245): digits/symbols, BREAK is background-only (no Keycode).
+    // Row 1 (y 160-245): digits/symbols, BREAK.
     shiftable(173.0, 160.0, 255.0, 245.0, Keycode::Num1, Keycode::Exclaim),
     shiftable(272.0, 160.0, 354.0, 245.0, Keycode::Num2, Keycode::Quotedbl),
     shiftable(371.0, 160.0, 453.0, 245.0, Keycode::Num3, Keycode::Hash),
@@ -91,7 +95,7 @@ const KEYS: &[VirtualKey] = &[
     fixed(1064.0, 160.0, 1146.0, 245.0, Keycode::Num0),
     shiftable(1163.0, 160.0, 1245.0, 245.0, Keycode::Colon, Keycode::Asterisk),
     shiftable(1262.0, 160.0, 1344.0, 245.0, Keycode::Minus, Keycode::Equals),
-    // BREAK (1362.0-1490.0, 148.0-240.0): not wired to anything, deliberately omitted.
+    fixed(1360.0, 160.0, 1450.0, 245.0, Keycode::Break),
 
     // Row 2 (y 250-345): arrow-up, QWERTYUIOP, @, left/right arrows.
     // Unlike row 1, re-measured directly (a per-row luminance-plateau scan,
@@ -121,9 +125,8 @@ const KEYS: &[VirtualKey] = &[
     fixed(1319.0, 250.0, 1389.0, 345.0, Keycode::Backspace),
     fixed(1420.0, 250.0, 1498.0, 345.0, Keycode::Right),
 
-    // Row 3 (y 352-452): arrow-down, ASDFGHJKL, ;/+, ENTER. CLEAR is
-    // background-only (no Keycode). Re-measured directly, same reason as
-    // row 2.
+    // Row 3 (y 352-452): arrow-down, ASDFGHJKL, ;/+, ENTER, CLEAR.
+    // Re-measured directly, same reason as row 2.
     fixed(162.0, 352.0, 240.0, 452.0, Keycode::Down),
     fixed(263.0, 352.0, 337.0, 452.0, Keycode::A),
     fixed(364.0, 352.0, 436.0, 452.0, Keycode::S),
@@ -136,7 +139,7 @@ const KEYS: &[VirtualKey] = &[
     fixed(1054.0, 352.0, 1125.0, 452.0, Keycode::L),
     shiftable(1154.0, 352.0, 1225.0, 452.0, Keycode::Semicolon, Keycode::Plus),
     fixed(1245.0, 352.0, 1431.0, 452.0, Keycode::Return),
-    // CLEAR (~1455.0-1550.0, 352.0-452.0): not wired to anything, deliberately omitted.
+    fixed(1450.0, 352.0, 1540.0, 452.0, Keycode::Clear),
 
     // Row 4 (y 460-548): SHIFT, ZXCVBNM, ,/< ./> //?, SHIFT. Re-measured
     // directly, same reason as row 2.

@@ -122,8 +122,16 @@ fn key_target(k: Keycode) -> Option<(u16, u8, bool)> {
         K::Question => (0x3820, 0x80, true),
 
         K::Return | K::KpEnter => (0x3840, 0x01, false),
-        K::Home => (0x3840, 0x02, false),
-        K::End => (0x3840, 0x04, false),
+        // Home/Clear and End/Break each share one matrix position: on real
+        // Model I hardware that position is CLEAR (row 0x3840, bit 0x02)
+        // and BREAK (bit 0x04) - see e.g. trs-80.com's own keyboard matrix
+        // reference. The host's Home/End keys were mapped onto them
+        // earlier as a modern-keyboard convenience (a physical keyboard
+        // has no CLEAR/BREAK at all), which this keeps unchanged; the
+        // virtual keyboard panel additionally exposes the real CLEAR/BREAK
+        // legends directly, for completeness.
+        K::Home | K::Clear => (0x3840, 0x02, false),
+        K::End | K::Break => (0x3840, 0x04, false),
         K::Up => (0x3840, 0x08, false),
         K::Down => (0x3840, 0x10, false),
         K::Left | K::Backspace => (0x3840, 0x20, false),
