@@ -66,6 +66,11 @@ pub struct Display {
     // this also has to run unconditionally (not just while the panel is
     // visible), so closing it releases anything still held.
     virtual_keyboard_pressed: std::collections::HashSet<trust_80_core::keys::Keycode>,
+    keyboard_settings: crate::keyboard_panel::KeyboardSettings,
+    // Same mechanism as `keyboard_panel_generation`, for the "Display" (F6)
+    // window - see `resize()` for why both need bumping on a live resize,
+    // not just on reopening.
+    crt_panel_generation: u64,
 }
 
 /// bytebox's own `CrtSettings::default()` (unchanged for the two fields not
@@ -105,7 +110,11 @@ fn tuned_crt_defaults() -> zilog_silicon::renderer::CrtSettings {
 pub const NTSC_THEORETICAL_PIXELS_PER_SCANLINE: f32 = 2.5;
 
 impl Display {
-    pub fn new(window: Window, crt_config: &crate::config::CrtConfig) -> Result<Display, Box<dyn Error>> {
+    pub fn new(
+        window: Window,
+        crt_config: &crate::config::CrtConfig,
+        keyboard_config: &crate::config::KeyboardConfig,
+    ) -> Result<Display, Box<dyn Error>> {
         // The native "screen" size (see trust_80_core::video) that
         // zilog_silicon's renderer letterboxes/scales into whatever the
         // actual window size is.
@@ -156,6 +165,10 @@ impl Display {
             keyboard_panel_visible: false,
             keyboard_panel_generation: 0,
             virtual_keyboard_pressed: std::collections::HashSet::new(),
+            keyboard_settings: crate::keyboard_panel::KeyboardSettings::from_config(
+                keyboard_config,
+            ),
+            crt_panel_generation: 0,
         })
     }
 
@@ -198,6 +211,22 @@ impl Display {
 
     pub fn resize(&mut self) {
         self.renderer.resize();
+        // A resize while a panel is already open leaves its `egui::Window`
+        // at its previously memorized position/size (egui keys that by id,
+        // and the id doesn't otherwise change) - bumping the generation
+        // here gives it a fresh id, so it re-evaluates `default_pos`/
+        // `default_width` against the new window size next frame, exactly
+        // like reopening it would. Only when actually visible: bumping
+        // while closed is pointless (nothing to move) and would just waste
+        // the F6/F7-triggered bump's own effect the next time it opens -
+        // same reasoning as bytebox's own `sdl.rs` (its own comment on
+        // this exact ordering).
+        if self.crt_panel_visible {
+            self.crt_panel_generation += 1;
+        }
+        if self.keyboard_panel_visible {
+            self.keyboard_panel_generation += 1;
+        }
     }
 
     pub fn handle_event(&mut self, event: &sdl2::event::Event) {
@@ -210,6 +239,9 @@ impl Display {
 
     pub fn toggle_crt_panel(&mut self) {
         self.crt_panel_visible = !self.crt_panel_visible;
+        if self.crt_panel_visible {
+            self.crt_panel_generation += 1;
+        }
     }
 
     pub fn toggle_keyboard_panel(&mut self) {
@@ -244,8 +276,10 @@ impl Display {
             // visibility silently reset to true below.
             let mut open = crt_panel_visible;
             let mut keyboard_open = keyboard_panel_visible;
+            let crt_panel_generation = self.crt_panel_generation;
             let keyboard_panel_generation = self.keyboard_panel_generation;
             let keyboard_panel = &mut self.keyboard_panel;
+            let mut keyboard_settings = self.keyboard_settings;
             let mut requested_zoom: Option<DisplayMode> = None;
             let mut save_requested = false;
             let current_zoom = self.current_zoom;
@@ -268,6 +302,7 @@ impl Display {
                 let mut overlay = |ctx: &egui::Context| {
                     if crt_panel_visible {
                     egui::Window::new("Display")
+                        .id(egui::Id::new(("display_panel_window", crt_panel_generation)))
                         .open(&mut open)
                         .default_width(260.0 * scale)
                         .show(ctx, |ui| {
@@ -288,6 +323,17 @@ impl Display {
                             }
                         });
                         ui.label(format!("Current zoom: {}", current_zoom.as_config_str()));
+
+                        ui.separator();
+                        ui.horizontal(|ui| {
+                            let mut percent = keyboard_settings.default_size_percent * 100.0;
+                            let response =
+                                ui.add(egui::Slider::new(&mut percent, 10.0..=100.0).suffix(" %"));
+                            ui.label("Virtual keyboard (F7) default size");
+                            if response.changed() {
+                                keyboard_settings.default_size_percent = percent / 100.0;
+                            }
+                        });
 
                         ui.separator();
                         ui.label("CRT shader");
@@ -359,6 +405,7 @@ impl Display {
                             &mut keyboard_open,
                             keyboard_panel_generation,
                             window_size,
+                            keyboard_settings,
                         );
                     }
                 };
@@ -367,6 +414,7 @@ impl Display {
             self.renderer.set_crt_settings(settings);
             self.crt_panel_visible = open;
             self.keyboard_panel_visible = keyboard_open;
+            self.keyboard_settings = keyboard_settings;
             if let Some(mode) = requested_zoom {
                 self.set_zoom(mode);
             }
@@ -380,6 +428,10 @@ impl Display {
                 let crt_config = crate::config::crt_settings_to_config(self.renderer.crt_settings());
                 if let Err(e) = crate::config::save_crt_config(&crt_config) {
                     eprintln!("Can't save CRT settings: {e}");
+                }
+                let keyboard_config = self.keyboard_settings.to_config();
+                if let Err(e) = crate::config::save_keyboard_config(&keyboard_config) {
+                    eprintln!("Can't save keyboard settings: {e}");
                 }
             }
         } else {

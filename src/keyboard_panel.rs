@@ -180,6 +180,44 @@ const KEYS: &[VirtualKey] = &[
     fixed(1830.0, 503.0, 1910.0, 590.0, Keycode::KpEnter),
 ];
 
+/// F6 panel settings for this virtual keyboard - same idea, same default,
+/// as bytebox's own `KeyboardSettings` (`amstrad_cpc/bytebox/src/
+/// keyboard_panel.rs`).
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct KeyboardSettings {
+    /// Default size at opening, as a fraction of the main window's height -
+    /// see the comment on `width_from_height_cap` in `ui()` for why height,
+    /// not width: this panel is a resizable `egui::Window`, capped in BOTH
+    /// dimensions so it doesn't cover the whole screen at once, and height
+    /// is the more useful axis to tie that cap to (a wide window shouldn't
+    /// force a huge keyboard, but a tall one should still allow a legible
+    /// one).
+    pub default_size_percent: f32,
+}
+
+impl Default for KeyboardSettings {
+    fn default() -> Self {
+        Self {
+            default_size_percent: 0.33,
+        }
+    }
+}
+
+impl KeyboardSettings {
+    pub fn from_config(cfg: &crate::config::KeyboardConfig) -> Self {
+        let d = Self::default();
+        Self {
+            default_size_percent: cfg.default_size_percent.unwrap_or(d.default_size_percent),
+        }
+    }
+
+    pub fn to_config(self) -> crate::config::KeyboardConfig {
+        crate::config::KeyboardConfig {
+            default_size_percent: Some(self.default_size_percent),
+        }
+    }
+}
+
 pub struct KeyboardPanel {
     texture: Option<egui::TextureHandle>,
     /// Whether SHIFT is currently latched - see the module doc comment.
@@ -217,6 +255,7 @@ impl KeyboardPanel {
         open: &mut bool,
         generation: u64,
         window_size: egui::Vec2,
+        settings: KeyboardSettings,
     ) -> std::collections::HashSet<Keycode> {
         if self.texture.is_none() {
             self.texture = Self::load_texture(ctx);
@@ -224,7 +263,8 @@ impl KeyboardPanel {
 
         let aspect = IMAGE_SIZE.y / IMAGE_SIZE.x;
         let width_from_width_cap = window_size.x * 0.9;
-        let width_from_height_cap = (window_size.y * 0.45) / aspect;
+        let width_from_height_cap =
+            (window_size.y * settings.default_size_percent.clamp(0.0, 1.0)) / aspect;
         let default_width = width_from_width_cap.min(width_from_height_cap);
         let margin = 8.0;
         let default_pos = egui::pos2(window_size.x - margin, window_size.y - margin);

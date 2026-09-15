@@ -33,6 +33,8 @@ pub struct Config {
     pub display: ScreenConfig,
     #[serde(default)]
     pub crt: CrtConfig,
+    #[serde(default)]
+    pub keyboard: KeyboardConfig,
     pub memory: MemConfig,
     pub storage: StorageConfig,
     pub debug: Debug,
@@ -45,6 +47,17 @@ pub struct ScreenConfig {
     /// "normal", the same way bytebox's own `default_zoom` does.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_zoom: Option<String>,
+}
+
+/// Virtual keyboard (F7) settings, saved as their own `[keyboard]` section -
+/// same idea as bytebox's own `KeyboardConfig`.
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+pub struct KeyboardConfig {
+    /// Default size at opening, as a fraction of the main window's height -
+    /// see `KeyboardSettings::default_size_percent` (keyboard_panel.rs) for
+    /// why height, not width.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_size_percent: Option<f32>,
 }
 
 /// CRT shader tuning (F6 panel), saved as its own `[crt]` section - same
@@ -159,6 +172,12 @@ pub fn save_display_config(display: &ScreenConfig) -> Result<(), ConfigError> {
 pub fn save_crt_config(crt: &CrtConfig) -> Result<(), ConfigError> {
     let body = toml::to_string(crt).map_err(|_e| ConfigError::ConfigFileFmt)?;
     write_config_section("crt", &body)
+}
+
+/// Same idea as [`save_display_config`], for the `[keyboard]` section.
+pub fn save_keyboard_config(keyboard: &KeyboardConfig) -> Result<(), ConfigError> {
+    let body = toml::to_string(keyboard).map_err(|_e| ConfigError::ConfigFileFmt)?;
+    write_config_section("keyboard", &body)
 }
 
 fn write_config_section(section: &str, body: &str) -> Result<(), ConfigError> {
