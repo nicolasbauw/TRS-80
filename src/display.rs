@@ -52,6 +52,20 @@ pub struct Display {
     // hasn't changed. `None` forces a full redraw on the first frame.
     last_vram: Option<Vec<u8>>,
     current_zoom: DisplayMode,
+    keyboard_panel: crate::keyboard_panel::KeyboardPanel,
+    keyboard_panel_visible: bool,
+    // Changed each time the panel is (re)opened - part of its egui window
+    // id, so its default position/size is recomputed on every reopen
+    // instead of staying at wherever it first opened for the whole session
+    // (egui remembers geometry per id, even while hidden) - same mechanism
+    // as bytebox's own `keyboard_panel_generation`.
+    keyboard_panel_generation: u64,
+    // Previous frame's virtual-keyboard `Keycode`s, to diff against this
+    // frame's and only send `virtual_key_down`/`virtual_key_up` for what
+    // actually changed - see `KeyboardPanel::ui`'s own doc comment for why
+    // this also has to run unconditionally (not just while the panel is
+    // visible), so closing it releases anything still held.
+    virtual_keyboard_pressed: std::collections::HashSet<trust_80_core::keys::Keycode>,
 }
 
 /// bytebox's own `CrtSettings::default()` (unchanged for the two fields not
@@ -138,6 +152,10 @@ impl Display {
             crt_panel_visible: false,
             last_vram: None,
             current_zoom: DisplayMode::Normal,
+            keyboard_panel: crate::keyboard_panel::KeyboardPanel::new(),
+            keyboard_panel_visible: false,
+            keyboard_panel_generation: 0,
+            virtual_keyboard_pressed: std::collections::HashSet::new(),
         })
     }
 
@@ -194,12 +212,40 @@ impl Display {
         self.crt_panel_visible = !self.crt_panel_visible;
     }
 
-    pub fn update(&mut self, bus: &TrsBus) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn toggle_keyboard_panel(&mut self) {
+        self.keyboard_panel_visible = !self.keyboard_panel_visible;
+        if self.keyboard_panel_visible {
+            self.keyboard_panel_generation += 1;
+        }
+    }
+
+    pub fn update(
+        &mut self,
+        bus: &TrsBus,
+        keyboard: &mut crate::keyboard::Keyboard,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         self.draw(bus);
 
-        if self.crt_panel_visible {
+        // Populated inside the overlay closure below only if the keyboard
+        // panel is actually visible this frame - stays empty otherwise, so
+        // the diff against `self.virtual_keyboard_pressed` after the
+        // if/else naturally releases anything still held the moment the
+        // panel closes (see `KeyboardPanel::ui`'s own doc comment).
+        let mut new_virtual_keys = std::collections::HashSet::new();
+
+        if self.crt_panel_visible || self.keyboard_panel_visible {
             let mut settings = self.renderer.crt_settings();
-            let mut open = true;
+            let crt_panel_visible = self.crt_panel_visible;
+            let keyboard_panel_visible = self.keyboard_panel_visible;
+            // Only a window actually shown this frame can flip its own
+            // `open` back to false (its egui close button) - starting both
+            // at their CURRENT visibility (not unconditionally `true`)
+            // means a panel that isn't shown this frame doesn't get its
+            // visibility silently reset to true below.
+            let mut open = crt_panel_visible;
+            let mut keyboard_open = keyboard_panel_visible;
+            let keyboard_panel_generation = self.keyboard_panel_generation;
+            let keyboard_panel = &mut self.keyboard_panel;
             let mut requested_zoom: Option<DisplayMode> = None;
             let mut save_requested = false;
             let current_zoom = self.current_zoom;
@@ -220,6 +266,7 @@ impl Display {
             let scale = zilog_silicon::ui_scale::content_scale(window_size);
             {
                 let mut overlay = |ctx: &egui::Context| {
+                    if crt_panel_visible {
                     egui::Window::new("Display")
                         .open(&mut open)
                         .default_width(260.0 * scale)
@@ -305,11 +352,21 @@ impl Display {
                             }
                         });
                     });
+                    }
+                    if keyboard_panel_visible {
+                        new_virtual_keys = keyboard_panel.ui(
+                            ctx,
+                            &mut keyboard_open,
+                            keyboard_panel_generation,
+                            window_size,
+                        );
+                    }
                 };
                 self.renderer.present(&self.frame, Some(&mut overlay));
             }
             self.renderer.set_crt_settings(settings);
             self.crt_panel_visible = open;
+            self.keyboard_panel_visible = keyboard_open;
             if let Some(mode) = requested_zoom {
                 self.set_zoom(mode);
             }
@@ -328,6 +385,19 @@ impl Display {
         } else {
             self.renderer.present(&self.frame, None);
         }
+
+        // Unconditional (not just while the panel is visible - see
+        // `KeyboardPanel::ui`'s doc comment): released `Keycode`s must
+        // still reach the core the frame the panel closes, or F7 could
+        // leave a key stuck held forever.
+        for &kc in self.virtual_keyboard_pressed.difference(&new_virtual_keys) {
+            keyboard.virtual_key_up(kc);
+        }
+        for &kc in new_virtual_keys.difference(&self.virtual_keyboard_pressed) {
+            keyboard.virtual_key_down(kc);
+        }
+        self.virtual_keyboard_pressed = new_virtual_keys;
+
         Ok(())
     }
 

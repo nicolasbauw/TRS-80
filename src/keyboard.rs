@@ -436,4 +436,20 @@ impl Keyboard {
         let now = self.now();
         self.inner.update(bus, now);
     }
+
+    /// Drives the core matrix directly from a `Keycode`, bypassing all the
+    /// SDL/AZERTY-resolution machinery above entirely - for the virtual
+    /// keyboard panel (`keyboard_panel.rs`), which already knows exactly
+    /// which `Keycode` it means (no host layout to resolve). Shares the
+    /// same underlying `CoreKeyboard` and clock as physical typing, so a
+    /// key held via mouse and one held via the real keyboard compose
+    /// exactly like two physical keys would.
+    pub fn virtual_key_down(&mut self, k: Keycode) {
+        let now = self.now();
+        self.inner.key_down(k, now);
+    }
+
+    pub fn virtual_key_up(&mut self, k: Keycode) {
+        self.inner.key_up(k);
+    }
 }

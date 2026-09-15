@@ -8,6 +8,7 @@ mod config;
 mod console_window;
 mod display;
 mod keyboard;
+mod keyboard_panel;
 use console_window::ConsoleWindow;
 use display::{Display, DisplayMode};
 use keyboard::Keyboard;
@@ -300,6 +301,12 @@ fn launch() -> Result<(), Box<dyn Error>> {
                     window_id,
                     ..
                 } if window_id == main_window_id => display.toggle_crt_panel(),
+                Event::KeyDown {
+                    keycode: Some(Keycode::F7),
+                    repeat: false,
+                    window_id,
+                    ..
+                } if window_id == main_window_id => display.toggle_keyboard_panel(),
                 // Also accepted from console_window_id itself, not just the
                 // main window: opening it gives it focus (request_focus
                 // below), so a re-press of F11 to close it arrives with
@@ -345,7 +352,7 @@ fn launch() -> Result<(), Box<dyn Error>> {
         keyboard.update(&mut trs80.bus);
 
         // Update display
-        display.update(&trs80.bus)?;
+        display.update(&trs80.bus, &mut keyboard)?;
 
         // Handle console commands: processed before rendering the console
         // window so a command's output shows up the same frame it ran, not
